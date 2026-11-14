@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>All Entries - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
     <style>
@@ -50,16 +51,16 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
-            <a href="sign_up.html" class="account-link">✨ Sign Up</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link">Log in</a>
+            <a href="sign_up.html" class="account-link">Sign up</a>
         </div>
     </aside>
 
     <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
         <h3>
-            <span>Style &amp; Accessibility</span>
+            <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
         </h3>
 
@@ -71,9 +72,9 @@
         </div>
 
         <span class="panel-section-label">Accessibility</span>
-        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
-        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
-        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">Larger text</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">High contrast</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">Wider letter spacing</button>
     </div>
 
     <main class="main-content" id="main-content">
@@ -83,8 +84,8 @@
 
         <div class="search-bar-row">
             <label for="searchInput" class="sr-only">Search entries</label>
-            <input type="text" id="searchInput" class="search-input" maxlength="120" onkeyup="filterEntries()" placeholder="Search entries by keyword or mood...">
-            <button class="export-btn" onclick="exportEntries()">📥 Export (.txt)</button>
+            <input type="text" id="searchInput" class="search-input" maxlength="120" onkeyup="filterEntries()" placeholder="Search by word, tag or mood">
+            <button class="export-btn" onclick="exportEntries()">Export as .txt</button>
         </div>
 
         <div id="entryList"></div>
@@ -124,7 +125,7 @@
             localStorage.setItem('selected-font', fontType);
             if (!silent) {
                 const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`✍️ Font switched to ${labels[fontType]}`);
+                showToast(`Font switched to ${labels[fontType]}`);
             }
         }
 
@@ -147,7 +148,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         function toggleA11yPanel() {
@@ -169,7 +170,7 @@
             try {
                 entries = await loadDiaryEntries();
             } catch (error) {
-                showToast(`⚠️ ${error.message}`);
+                showToast(`${error.message}`);
                 return;
             }
 
@@ -177,7 +178,7 @@
             listContainer.replaceChildren();
 
             if (entries.length === 0) {
-                listContainer.innerHTML = '<p style="color: #777; font-style: italic; margin-top: 20px;">No diary entries yet. Write your first entry on the Today page!</p>';
+                listContainer.innerHTML = '<p class="empty-state">Nothing here yet. Your entries will collect here after your first check-in on <a href="user_interface.html">Today</a>.</p>';
                 return;
             }
 
@@ -198,8 +199,8 @@
                         <p class="display-text" style="color: inherit; line-height: 1.6;"></p>
                         <div class="entry-tags" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
                         <div class="entry-card-actions">
-                            <button type="button" class="btn-secondary listen-entry" style="font-size: 12px; padding: 6px 12px;">🔊 Listen</button>
-                            <button type="button" class="btn-delete">🗑️ Delete</button>
+                            <button type="button" class="btn-secondary listen-entry" style="font-size: 12px; padding: 6px 12px;">Listen</button>
+                            <button type="button" class="btn-delete">Delete</button>
                         </div>
                     </div>
 
@@ -214,9 +215,9 @@
                         </div>
                     </div>
                 `;
-                article.setAttribute('aria-label', `Edit entry: ${entry.date} — ${entry.title}`);
-                article.querySelector('.display-title').textContent = `${entry.date} — ${entry.title}`;
-                article.querySelector('.display-mood').textContent = entry.mood || '';
+                article.setAttribute('aria-label', `Edit entry: ${entry.date} · ${entry.title}`);
+                article.querySelector('.display-title').textContent = `${entry.date} · ${entry.title}`;
+                renderMood(article.querySelector('.display-mood'), entry.mood);
                 article.querySelector('.display-text').textContent = entry.text || '';
                 article.querySelector('.edit-input').value = entry.title || '';
                 article.querySelector('.edit-textarea').value = entry.text || '';
@@ -243,9 +244,9 @@
             try {
                 await deleteDiaryEntry(entryId);
                 await loadEntries();
-                showToast('🗑️ Entry deleted');
+                showToast('Entry deleted');
             } catch (error) {
-                showToast(`⚠️ ${error.message}`);
+                showToast(`${error.message}`);
             }
         }
 
@@ -257,7 +258,7 @@
                 const title = row.querySelector('.display-title').innerText;
                 const text = row.querySelector('.display-text').innerText;
                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(title + ". " + text));
-                showToast('🔊 Reading entry aloud...');
+                showToast('Reading entry aloud...');
             }
         }
 
@@ -280,7 +281,7 @@
             const newTitle = row.querySelector('.edit-input').value.trim();
             const newText = row.querySelector('.edit-textarea').value.trim();
             if (newTitle.length > 120 || newText.length > 10000) {
-                showToast('⚠️ Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
+                showToast('Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
                 return;
             }
 
@@ -290,9 +291,9 @@
                     text: newText
                 });
                 await loadEntries();
-                showToast('✓ Entry updated successfully');
+                showToast('Entry updated successfully');
             } catch (error) {
-                showToast(`⚠️ ${error.message}`);
+                showToast(`${error.message}`);
             }
         }
 
@@ -308,12 +309,12 @@
             try {
                 entries = await loadDiaryEntries();
             } catch (error) {
-                showToast(`⚠️ ${error.message}`);
+                showToast(`${error.message}`);
                 return;
             }
             let exportText = "SMART DIARY EXPORT\n====================\n\n";
             entries.forEach(e => {
-                exportText += `${e.date} — ${e.title} (${e.mood})\n${e.text}\nTags: ${(e.tags || []).join(', ')}\n\n--------------------\n\n`;
+                exportText += `${e.date} · ${e.title} (${e.mood})\n${e.text}\nTags: ${(e.tags || []).join(', ')}\n\n--------------------\n\n`;
             });
 
             const blob = new Blob([exportText], { type: 'text/plain' });
@@ -322,7 +323,7 @@
             a.href = url;
             a.download = 'smart-diary-backup.txt';
             a.click();
-            showToast('📥 Exported entries to smart-diary-backup.txt');
+            showToast('Exported entries to smart-diary-backup.txt');
         }
     </script>
 </body>

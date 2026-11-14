@@ -116,3 +116,30 @@ async function deleteDiaryEntry(entryId) {
     }
     saveGuestEntries(getGuestEntries().filter(entry => entry.id !== entryId));
 }
+
+// ---- Mood display helpers (shared by Today, All Entries, Calendar, Insights) ----
+// Moods are stored as text: "Happy" now, "😊 Happy" in older entries. These give the
+// plain name, a key for the CSS mood colour (data-mood), and a ready-made label.
+const MOOD_KEYS = ['happy', 'calm', 'reflective', 'stressed'];
+
+function moodName(mood) {
+    return String(mood || '').replace(/[^\p{L}\s-]/gu, '').trim();
+}
+
+function moodKey(mood) {
+    const name = moodName(mood).toLowerCase();
+    return MOOD_KEYS.includes(name) ? name : '';
+}
+
+function renderMood(element, mood) {
+    element.replaceChildren();
+    const key = moodKey(mood);
+    if (key) {
+        element.dataset.mood = key;
+        const note = document.createElement('span');
+        note.className = 'note';
+        note.setAttribute('aria-hidden', 'true');
+        element.appendChild(note);
+    }
+    element.appendChild(document.createTextNode(moodName(mood)));
+}

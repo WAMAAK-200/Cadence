@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sign Up - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
@@ -21,9 +22,9 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
-            <a href="sign_up.html" class="account-link active" aria-current="page">✨ Sign Up</a>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link">Log in</a>
+            <a href="sign_up.html" class="account-link active" aria-current="page">Sign up</a>
         </div>
     </aside>
 
@@ -42,7 +43,7 @@
             <input type="password" id="signup-password" required maxlength="72" autocomplete="new-password" placeholder="Create a password" aria-describedby="signup-password-error">
             <small class="field-error" id="signup-password-error" aria-live="polite"></small>
 
-            <button type="submit" class="save-btn" style="width: 100%;">Sign Up</button>
+            <button type="submit" class="save-btn" style="width: 100%;">Sign up</button>
         </form>
         <p class="account-switch">Already have an account? <a href="account.html">Log in</a></p>
     </main>
@@ -65,7 +66,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         const signupForm = document.getElementById('signup-form');
