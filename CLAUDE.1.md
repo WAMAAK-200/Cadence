@@ -61,11 +61,11 @@ Each person works in one lane. **Only edit files inside your own lane.** If a ch
 
 | Lane | Owner | Owns |
 |------|-------|------|
-| A. Project lead and pull request management | TBC | `src/features/checkin/` (voice check-in UI), `package.json` and lockfile, `README.md`, `src/App.tsx` and routing, `CLAUDE.md`, `idea.md`, `PROJECT_BRIEF.md`, Devpost write-up and pitch |
-| B. Research and data | TBC | `docs/research/`, `demo-data/` (fictional students and three weeks of entries, verified support contacts), `src/insights/` (pattern calculations: sleep vs mood, study vs stress, exam countdown) |
-| C. UI and sound design | TBC | `docs/design/`, Tailwind config and shared styles, `src/features/insights/`, `src/features/calendar/`, `src/features/composition/` (Tone.js music generator and player) |
-| D. AI and API usage | Khaliq | `prompts/`, the Gemini API call code, JSON parsing, cost logging |
-| E. Backend flow | TBC | `server/` routes and request flow, storage (Atlas or JSON), safety routing, fallback to cached demo data |
+| A. Project lead and pull request management | Warith | `src/features/checkin/` (voice check-in UI), `package.json` and lockfile, `README.md`, `src/App.tsx` and routing, `CLAUDE.md`, `idea.md`, `PROJECT_BRIEF.md`, Devpost write-up and pitch |
+| B. Research and data | Warith | `docs/research/`, `demo-data/` (fictional students and three weeks of entries, verified support contacts), `src/insights/` (pattern calculations: sleep vs mood, study vs stress, exam countdown) |
+| C. UI and sound design | Yahyaa | `docs/design/`, Tailwind config and shared styles, `src/features/insights/`, `src/features/calendar/`, `src/features/composition/` (Tone.js music generator and player) |
+| D. AI and API usage | Khaliq & Warith | `prompts/`, the Gemini API call code, JSON parsing, cost logging |
+| E. Backend flow | Tom | `server/` routes and request flow, storage (Atlas or JSON), safety routing, fallback to cached demo data |
 
 Shared files with a single owner:
 
