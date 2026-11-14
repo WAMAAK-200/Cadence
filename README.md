@@ -1,1 +1,7 @@
-lorem ipsum dolor sit amet
+# Who works on what
+
+## Frontend - Yahya
+
+## Backend - Tom
+
+## AI - Warith & Khaliq
