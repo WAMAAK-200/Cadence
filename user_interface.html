@@ -2,88 +2,684 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Today - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Primary Navigation">
         <div>
             <div class="brand">Smart Diary</div>
-            <ul class="nav-menu">
-                <li><a href="user_interface.html" class="active">Today</a></li>
-                <li><a href="entries.html">All Entries</a></li>
-                <li><a href="calendar.html">Calendar</a></li>
-                <li><a href="insights.html">Insights</a></li>
-            </ul>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html" class="active" aria-current="page">Today</a></li>
+                    <li><a href="entries.html">All Entries</a></li>
+                    <li><a href="calendar.html">Calendar</a></li>
+                    <li><a href="insights.html">Insights</a></li>
+                </ul>
+            </nav>
         </div>
         <div class="sidebar-footer">
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link" id="navAccountLink">Log in</a>
+            <a href="sign_up.html" class="account-link" id="navSignUpLink">Sign up</a>
         </div>
     </aside>
 
-    <main class="main-content">
+    <!-- Style & Accessibility Settings Panel -->
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+        <h3>
+            <span>Display &amp; accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
+        </div>
+
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">Larger text</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">High contrast</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">Wider letter spacing</button>
+    </div>
+
+    <main class="main-content" id="main-content">
+        <!-- Operating Mode Banner -->
+        <div class="mode-banner" id="modeBanner">
+            <div>
+                <span>Operating Mode:</span>
+                <span class="mode-badge" id="modeBadgeDisplay">Student</span>
+            </div>
+            <div>
+                <label for="modeSwitcherSelect" class="sr-only">Switch Mode</label>
+                <select id="modeSwitcherSelect" class="mode-select" onchange="handleModeChange(this.value)">
+                    <option value="student">Student Mode</option>
+                    <option value="employed">Employed / Work Mode</option>
+                    <option value="unemployed">Unemployed / Recovery</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Crisis Safety Alert Banner (Hidden by default, shown if crisis keywords detected) -->
+        <div class="crisis-banner" id="crisisBanner" style="display: none;" role="alert">
+            <strong>You don't have to deal with this on your own.</strong>
+            <p id="crisisMessageText">It sounds like things are really hard right now. You can call Samaritans free, any time, on <a href="tel:116123">116 123</a>, or contact your university / GP wellbeing service. If you're in immediate danger, call 999.</p>
+        </div>
+
         <div class="top-actions">
-            <h1 class="date-heading" id="today-date">Saturday, November 14, 2026</h1>
-            <button class="smart-toggle-btn" onclick="toggleDrawer()">✨ Smart Assistant</button>
+            <h1 class="date-heading"><span class="date-sub">Today</span><span id="today-date">Saturday 14 November</span></h1>
+            <button class="smart-toggle-btn" aria-expanded="false" aria-controls="smartDrawer" onclick="toggleDrawer()">Need a prompt?</button>
         </div>
 
-        <div class="mood-bar">
-            <button class="mood-pill" onclick="selectMood(this)">😊 Happy</button>
-            <button class="mood-pill" onclick="selectMood(this)">😌 Calm</button>
-            <button class="mood-pill" onclick="selectMood(this)">🤔 Reflective</button>
-            <button class="mood-pill" onclick="selectMood(this)">🌧️ Stressed</button>
+        <!-- This week as one bar of music: a filled note for each day with an entry, coloured by mood -->
+        <section class="week-bar" aria-labelledby="week-bar-label">
+            <h2 class="week-bar-label" id="week-bar-label">This week</h2>
+            <ol class="week-beats" id="weekBeats"></ol>
+        </section>
+
+        <!-- Voice & Smart AI Check-in Action Bar -->
+        <div class="voice-action-bar">
+            <button type="button" class="btn-voice" id="btnVoiceRecord" onclick="toggleVoiceRecording()">
+                <span id="micIcon" aria-hidden="true">🎙️</span>
+                <span id="voiceBtnText">Voice Check-In</span>
+            </button>
+            <button type="button" class="btn-ai-extract" id="btnAiExtract" onclick="extractTelemetryFromContent()">
+                ✨ Auto-Fill Telemetry
+            </button>
+            <span id="voiceStatus" style="font-size: var(--text-xs); color: var(--ink-3);" aria-live="polite"></span>
         </div>
 
-        <input type="text" class="entry-title-input" placeholder="Entry title...">
-        <textarea id="editor" class="borderless-editor" placeholder="Start writing directly on the page..."></textarea>
+        <!-- Dialect terms detected badge container -->
+        <div id="dialectTermsContainer" class="dialect-terms-list" style="display: none; margin-bottom: 12px;"></div>
+
+        <!-- AI Spoken Reply Card -->
+        <div id="spokenReplyCard" class="spoken-reply-card" style="display: none;">
+            <div style="font-weight: 600; font-size: var(--text-xs); text-transform: uppercase; margin-bottom: 4px; color: var(--ink-3);">Cadence Spoken Feedback:</div>
+            <p id="spokenReplyText"></p>
+        </div>
+
+        <!-- 1-Tap Mood Selector -->
+        <div class="mood-bar" role="group" aria-label="How are you feeling?">
+            <button type="button" class="mood-pill" data-mood="happy" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Happy</button>
+            <button type="button" class="mood-pill" data-mood="calm" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Calm</button>
+            <button type="button" class="mood-pill" data-mood="reflective" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Reflective</button>
+            <button type="button" class="mood-pill" data-mood="stressed" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Stressed</button>
+        </div>
+
+        <!-- Structured Telemetry Section (Sliders) -->
+        <section class="telemetry-section" aria-labelledby="telemetryHeader">
+            <div class="telemetry-toggle-header" id="telemetryHeader" onclick="toggleTelemetryGrid()">
+                <span>Structured Telemetry (Sleep, Stress, Hours)</span>
+                <span id="telemetryToggleIcon">▾</span>
+            </div>
+            <div class="telemetry-grid" id="telemetryGrid">
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="sleepSlider">Sleep (Hours)</label>
+                        <span class="slider-val-badge" id="sleepVal">7.5h</span>
+                    </div>
+                    <input type="range" id="sleepSlider" min="0" max="14" step="0.5" value="7.5" oninput="updateSliderBadge('sleepVal', this.value + 'h')">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="stressSlider">Stress Level (1-10)</label>
+                        <span class="slider-val-badge" id="stressVal">4</span>
+                    </div>
+                    <input type="range" id="stressSlider" min="1" max="10" step="1" value="4" oninput="updateSliderBadge('stressVal', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="fatigueSlider">Fatigue / Pain (1-10)</label>
+                        <span class="slider-val-badge" id="fatigueVal">3</span>
+                    </div>
+                    <input type="range" id="fatigueSlider" min="1" max="10" step="1" value="3" oninput="updateSliderBadge('fatigueVal', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="hoursSlider" id="hoursLabel">Study Hours</label>
+                        <span class="slider-val-badge" id="hoursVal">4.0h</span>
+                    </div>
+                    <input type="range" id="hoursSlider" min="0" max="16" step="0.5" value="4.0" oninput="updateSliderBadge('hoursVal', this.value + 'h')">
+                </div>
+            </div>
+        </section>
+
+        <div class="tag-container">
+            <label for="tagInput" class="sr-only">Add tag</label>
+            <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="Add a tag, then Enter (e.g. #revision, #work)" onkeydown="handleTagInput(event)">
+            <div id="activeTags" class="active-tags" aria-live="polite"></div>
+        </div>
+
+        <label for="entryTitle" class="sr-only">Entry Title</label>
+        <input type="text" id="entryTitle" class="entry-title-input" maxlength="120" placeholder="Title (optional)">
+
+        <label for="editor" class="sr-only">Diary Entry Content</label>
+        <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="How was today? A quick voice note or a few typed lines is plenty."></textarea>
+
+        <div class="editor-footer">
+            <span id="word-count" aria-live="polite">0 words</span>
+            <span id="auto-save-status" aria-live="polite"></span>
+        </div>
 
         <div class="save-bar">
-            <button class="save-btn">Save Entry</button> <!--Connect to backend API here-->
+            <button type="button" class="btn-secondary" onclick="readEntryAloud()" aria-label="Read current entry aloud">Read aloud</button>
+            <button type="button" class="save-btn" onclick="saveCurrentEntry()">Save entry</button>
         </div>
     </main>
 
-    <!-- Slide-Over Drawer for AI Prompts & Streaks -->
-    <div class="smart-drawer" id="smartDrawer">
+    <!-- Writing prompt drawer -->
+    <aside class="smart-drawer" id="smartDrawer" aria-label="Writing prompt">
         <div class="drawer-header">
-            <h3>✨ Smart Assistant</h3>
-            <button class="close-drawer" onclick="toggleDrawer()">&times;</button>
+            <h3>Stuck for words?</h3>
+            <button class="close-drawer" aria-label="Close writing prompt" onclick="toggleDrawer()">&times;</button>
         </div>
 
         <div class="drawer-widget">
-            <h4>Daily Writing Prompt</h4>
-            <p style="font-size: 14px; line-height: 1.5; color: #444;">
-                "What is one small win from today that you want to remember next month?"
-            </p>
-            <button class="prompt-btn" onclick="usePrompt()">Insert into Page</button>
+            <h4>Today's prompt</h4>
+            <p class="drawer-prompt" id="dailyPrompt">What is one small win from today that you want to remember next month?</p>
+            <button class="prompt-btn" onclick="usePrompt()">Start with this</button>
+            <button class="prompt-btn" style="margin-top: 6px; background: transparent;" onclick="refreshDailyPrompt()">New prompt</button>
         </div>
+    </aside>
 
-        <div class="drawer-widget">
-            <h4>Current Streak</h4>
-            <p style="font-size: 22px; font-weight: 700;">4 Days</p>
-        </div>
-    </div>
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="music_synth.js"></script>
+    <script src="entry_storage.js"></script>
     <script>
-        // Automatically display current date
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
+        let currentSelectedMood = '';
+        let currentTags = [];
+        let isRecordingVoice = false;
+        let speechRecognition = null;
 
+        function updateSliderBadge(badgeId, text) {
+            const badge = document.getElementById(badgeId);
+            if (badge) badge.textContent = text;
+        }
+
+        function toggleTelemetryGrid() {
+            const grid = document.getElementById('telemetryGrid');
+            const icon = document.getElementById('telemetryToggleIcon');
+            const isHidden = grid.style.display === 'none';
+            grid.style.display = isHidden ? 'grid' : 'none';
+            icon.textContent = isHidden ? '▾' : '▸';
+        }
+
+        function handleModeChange(newMode) {
+            setStoredUserMode(newMode);
+            applyModeToUI(newMode);
+            showToast(`Switched to ${newMode[0].toUpperCase() + newMode.slice(1)} Mode`);
+        }
+
+        function applyModeToUI(mode) {
+            const badge = document.getElementById('modeBadgeDisplay');
+            const select = document.getElementById('modeSwitcherSelect');
+            const hoursLabel = document.getElementById('hoursLabel');
+
+            if (badge) badge.textContent = mode;
+            if (select) select.value = mode;
+
+            if (hoursLabel) {
+                if (mode === 'student') hoursLabel.textContent = 'Study Hours';
+                else if (mode === 'employed') hoursLabel.textContent = 'Work Hours';
+                else hoursLabel.textContent = 'Activity / Recovery Hours';
+            }
+        }
+
+        function selectMood(button) {
+            document.querySelectorAll('.mood-pill').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.setAttribute('aria-pressed', 'false');
+            });
+            button.classList.add('selected');
+            button.setAttribute('aria-pressed', 'true');
+            currentSelectedMood = button.dataset.mood;
+
+            // Musical auditory feedback: play tone matching the mood
+            const notes = { happy: 392.00, calm: 329.63, reflective: 293.66, stressed: 220.00 };
+            if (window.SmartDiaryMusicSynth && notes[currentSelectedMood]) {
+                window.SmartDiaryMusicSynth.playTone(notes[currentSelectedMood], 0.35, 'sine', currentSelectedMood === 'stressed' ? 0.4 : 0);
+            }
+        }
+
+        function handleTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                let val = event.target.value.trim();
+                if (!val) return;
+                if (!val.startsWith('#')) val = '#' + val;
+                if (!currentTags.includes(val) && currentTags.length < 20) {
+                    currentTags.push(val);
+                    renderTags();
+                }
+                event.target.value = '';
+            }
+        }
+
+        function removeTag(tagToRemove) {
+            currentTags = currentTags.filter(t => t !== tagToRemove);
+            renderTags();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('activeTags');
+            container.replaceChildren();
+            currentTags.forEach(t => {
+                const pill = document.createElement('span');
+                pill.className = 'tag-pill';
+                pill.textContent = t;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'tag-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.setAttribute('aria-label', `Remove tag ${t}`);
+                removeBtn.onclick = () => removeTag(t);
+                pill.appendChild(removeBtn);
+                container.appendChild(pill);
+            });
+        }
+
+        // ---- Speech Recognition & Voice Check-In ----
+        function initSpeechRecognition() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) return null;
+            const rec = new SpeechRec();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-GB';
+
+            rec.onresult = event => {
+                let fullTranscript = '';
+                for (let i = 0; i < event.results.length; i++) {
+                    fullTranscript += event.results[i][0].transcript;
+                }
+                const editor = document.getElementById('editor');
+                editor.value = fullTranscript;
+                updateWordCount();
+            };
+
+            rec.onerror = event => {
+                console.warn('Speech recognition error:', event.error);
+                stopVoiceRecording();
+                showToast('Voice input stopped: ' + event.error);
+            };
+
+            rec.onend = () => {
+                if (isRecordingVoice) stopVoiceRecording();
+            };
+
+            return rec;
+        }
+
+        function toggleVoiceRecording() {
+            if (isRecordingVoice) {
+                stopVoiceRecording();
+                extractTelemetryFromContent();
+            } else {
+                startVoiceRecording();
+            }
+        }
+
+        function startVoiceRecording() {
+            if (!speechRecognition) speechRecognition = initSpeechRecognition();
+            if (!speechRecognition) {
+                showToast('Speech recognition not supported in this browser. You can type freely.');
+                return;
+            }
+            try {
+                speechRecognition.start();
+                isRecordingVoice = true;
+                const btn = document.getElementById('btnVoiceRecord');
+                const text = document.getElementById('voiceBtnText');
+                const status = document.getElementById('voiceStatus');
+                btn.classList.add('recording');
+                text.textContent = 'Listening (Tap to Finish)...';
+                status.textContent = 'Listening to speech (dialect-aware)...';
+            } catch (e) {
+                showToast('Could not start voice recognition.');
+            }
+        }
+
+        function stopVoiceRecording() {
+            if (speechRecognition && isRecordingVoice) {
+                try { speechRecognition.stop(); } catch (e) {}
+            }
+            isRecordingVoice = false;
+            const btn = document.getElementById('btnVoiceRecord');
+            const text = document.getElementById('voiceBtnText');
+            const status = document.getElementById('voiceStatus');
+            btn.classList.remove('recording');
+            text.textContent = 'Voice Check-In';
+            status.textContent = '';
+        }
+
+        // ---- Smart AI Extraction ----
+        async function extractTelemetryFromContent() {
+            const text = document.getElementById('editor').value.trim();
+            if (!text) {
+                showToast('Please type or record a check-in first.');
+                return;
+            }
+
+            showToast('Extracting structured wellbeing data...');
+            const mode = getStoredUserMode();
+            const extraction = await extractCheckinAI(text, mode);
+
+            if (extraction) {
+                // Check safety flag
+                if (extraction.safety && extraction.safety.level === 'crisis') {
+                    const banner = document.getElementById('crisisBanner');
+                    banner.style.display = 'flex';
+                }
+
+                // Auto-set mood
+                if (extraction.mood) {
+                    let mKey = 'calm';
+                    if (extraction.mood >= 7.5) mKey = 'happy';
+                    else if (extraction.mood >= 5.5) mKey = 'calm';
+                    else if (extraction.mood >= 4.0) mKey = 'reflective';
+                    else mKey = 'stressed';
+
+                    const pill = document.querySelector(`.mood-pill[data-mood="${mKey}"]`);
+                    if (pill) selectMood(pill);
+                }
+
+                // Auto-set sliders
+                if (typeof extraction.sleepHours === 'number') {
+                    const slider = document.getElementById('sleepSlider');
+                    slider.value = extraction.sleepHours;
+                    updateSliderBadge('sleepVal', extraction.sleepHours + 'h');
+                }
+                if (typeof extraction.stress === 'number') {
+                    const slider = document.getElementById('stressSlider');
+                    slider.value = extraction.stress;
+                    updateSliderBadge('stressVal', extraction.stress);
+                }
+                if (typeof extraction.fatigue === 'number') {
+                    const slider = document.getElementById('fatigueSlider');
+                    slider.value = extraction.fatigue;
+                    updateSliderBadge('fatigueVal', extraction.fatigue);
+                }
+                const hoursVal = extraction.studyHours !== null ? extraction.studyHours : extraction.workHours;
+                if (typeof hoursVal === 'number') {
+                    const slider = document.getElementById('hoursSlider');
+                    slider.value = hoursVal;
+                    updateSliderBadge('hoursVal', hoursVal + 'h');
+                }
+
+                // Tags
+                if (Array.isArray(extraction.tags)) {
+                    extraction.tags.forEach(t => {
+                        const tag = t.startsWith('#') ? t : '#' + t;
+                        if (!currentTags.includes(tag)) currentTags.push(tag);
+                    });
+                    renderTags();
+                }
+
+                // Dialect terms
+                if (Array.isArray(extraction.dialectTerms) && extraction.dialectTerms.length > 0) {
+                    const container = document.getElementById('dialectTermsContainer');
+                    container.replaceChildren();
+                    container.style.display = 'flex';
+                    extraction.dialectTerms.forEach(d => {
+                        const span = document.createElement('span');
+                        span.className = 'dialect-pill';
+                        span.textContent = `Dialect: "${d.heard}" → ${d.meaning}`;
+                        container.appendChild(span);
+                    });
+                }
+
+                // Spoken reply
+                if (extraction.spokenReply) {
+                    const replyCard = document.getElementById('spokenReplyCard');
+                    const replyText = document.getElementById('spokenReplyText');
+                    replyCard.style.display = 'block';
+                    replyText.textContent = extraction.spokenReply;
+                }
+
+                showToast('Telemetry updated with AI insights.');
+            }
+        }
+
+        // ---- Save Entry ----
+        async function saveCurrentEntry() {
+            const title = document.getElementById('entryTitle').value.trim() || 'Daily Check-in';
+            const text = document.getElementById('editor').value.trim();
+            const mood = currentSelectedMood || 'calm';
+            const sleepHours = parseFloat(document.getElementById('sleepSlider').value) || 7.5;
+            const stress = parseInt(document.getElementById('stressSlider').value, 10) || 4;
+            const fatigue = parseInt(document.getElementById('fatigueSlider').value, 10) || 3;
+            const hoursVal = parseFloat(document.getElementById('hoursSlider').value) || 0;
+            const mode = getStoredUserMode();
+
+            if (!text && !title) {
+                showToast('Please write something for your entry.');
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+
+            const entryData = {
+                date: today,
+                title,
+                mood,
+                text,
+                tags: currentTags,
+                sleepHours,
+                sleepQuality: sleepHours >= 7 ? 'good' : (sleepHours >= 5 ? 'ok' : 'poor'),
+                stress,
+                fatigue,
+                studyHours: mode === 'student' ? hoursVal : 0,
+                workHours: mode === 'employed' ? hoursVal : 0,
+                mode,
+                summary: text.slice(0, 150)
+            };
+
+            try {
+                await createDiaryEntry(entryData);
+                showToast('Entry saved successfully!');
+                renderWeekBar();
+            } catch (e) {
+                showToast('Error saving entry: ' + e.message);
+            }
+        }
+
+        // ---- Week as a Bar of Music ----
+        async function renderWeekBar() {
+            const list = document.getElementById('weekBeats');
+            if (!list) return;
+            const entries = await loadDiaryEntries();
+            const now = new Date();
+            const monday = new Date(now);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            list.replaceChildren();
+
+            const frequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
+
+            days.forEach((dayName, idx) => {
+                const dayDate = new Date(monday);
+                dayDate.setDate(monday.getDate() + idx);
+                const dateStr = dayDate.toISOString().split('T')[0];
+
+                const matching = entries.find(e => String(e.date).startsWith(dateStr));
+
+                const li = document.createElement('li');
+                li.className = 'week-beat';
+                if (dayDate.toDateString() === now.toDateString()) li.classList.add('today');
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'beat-name';
+                nameSpan.textContent = dayName;
+
+                const noteBtn = document.createElement('button');
+                noteBtn.className = 'beat-note';
+                noteBtn.type = 'button';
+                noteBtn.setAttribute('aria-label', `${dayName}: ${matching ? matching.mood : 'No entry'}`);
+
+                if (matching) {
+                    li.classList.add('has-entry');
+                    const mKey = moodKey(matching.mood);
+                    if (mKey) li.dataset.mood = mKey;
+                    const head = document.createElement('span');
+                    head.className = 'note-head';
+                    head.setAttribute('aria-hidden', 'true');
+                    noteBtn.appendChild(head);
+                }
+
+                noteBtn.onclick = () => {
+                    if (window.SmartDiaryMusicSynth) {
+                        const freq = frequencies[idx];
+                        window.SmartDiaryMusicSynth.playTone(freq, 0.4, 'sine', matching && matching.stress > 6 ? 0.3 : 0);
+                    }
+                    if (matching) showToast(`${dayName}: ${matching.title} (${matching.mood})`);
+                };
+
+                li.appendChild(nameSpan);
+                li.appendChild(noteBtn);
+                list.appendChild(li);
+            });
+        }
+
+        // ---- Read Aloud with SpeechSynthesis ----
+        function readEntryAloud() {
+            const title = document.getElementById('entryTitle').value;
+            const text = document.getElementById('editor').value;
+            const content = (title ? title + '. ' : '') + text;
+
+            if (!content.trim()) {
+                showToast('Nothing to read aloud.');
+                return;
+            }
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(content);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+                showToast('Reading entry aloud...');
+            } else {
+                showToast('Text-to-speech not supported.');
+            }
+        }
+
+        // ---- Prompt Drawer ----
         function toggleDrawer() {
             document.getElementById('smartDrawer').classList.toggle('open');
         }
 
-        function selectMood(btn) {
-            document.querySelectorAll('.mood-pill').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+        async function refreshDailyPrompt() {
+            const mode = getStoredUserMode();
+            const entries = await loadDiaryEntries();
+            const prompt = await getDailyPromptAI(mode, {}, entries.slice(0, 3));
+            document.getElementById('dailyPrompt').textContent = prompt;
         }
 
         function usePrompt() {
+            const prompt = document.getElementById('dailyPrompt').textContent;
             const editor = document.getElementById('editor');
-            editor.value += "Prompt: What is one small win from today that I'm proud of?\n";
-            editor.focus();
+            if (editor.value) editor.value += '\n\n' + prompt + '\n';
+            else editor.value = prompt + '\n';
             toggleDrawer();
+            updateWordCount();
         }
+
+        function updateWordCount() {
+            const text = document.getElementById('editor').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            document.getElementById('word-count').textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+        }
+
+        document.getElementById('editor').addEventListener('input', updateWordCount);
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        function setFont(fontType) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+            localStorage.setItem('selected-font', fontType);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+
+            const mode = getStoredUserMode();
+            applyModeToUI(mode);
+
+            // Update auth link
+            const token = getEntrySessionToken();
+            if (token && token !== 'expired') {
+                document.getElementById('navAccountLink').textContent = 'My Account';
+                document.getElementById('navSignUpLink').style.display = 'none';
+            }
+        }
+
+        // Initialize Today view
+        applySavedPreferences();
+        renderWeekBar();
+        refreshDailyPrompt();
     </script>
 </body>
 </html>

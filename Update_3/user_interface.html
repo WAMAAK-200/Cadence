@@ -24,8 +24,8 @@
         <div class="sidebar-footer">
             <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
             <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
-            <a href="account.html" class="account-link">Log in</a>
-            <a href="sign_up.html" class="account-link">Sign up</a>
+            <a href="account.html" class="account-link" id="navAccountLink">Log in</a>
+            <a href="sign_up.html" class="account-link" id="navSignUpLink">Sign up</a>
         </div>
     </aside>
 
@@ -50,6 +50,28 @@
     </div>
 
     <main class="main-content" id="main-content">
+        <!-- Operating Mode Banner -->
+        <div class="mode-banner" id="modeBanner">
+            <div>
+                <span>Operating Mode:</span>
+                <span class="mode-badge" id="modeBadgeDisplay">Student</span>
+            </div>
+            <div>
+                <label for="modeSwitcherSelect" class="sr-only">Switch Mode</label>
+                <select id="modeSwitcherSelect" class="mode-select" onchange="handleModeChange(this.value)">
+                    <option value="student">Student Mode</option>
+                    <option value="employed">Employed / Work Mode</option>
+                    <option value="unemployed">Unemployed / Recovery</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Crisis Safety Alert Banner (Hidden by default, shown if crisis keywords detected) -->
+        <div class="crisis-banner" id="crisisBanner" style="display: none;" role="alert">
+            <strong>You don't have to deal with this on your own.</strong>
+            <p id="crisisMessageText">It sounds like things are really hard right now. You can call Samaritans free, any time, on <a href="tel:116123">116 123</a>, or contact your university / GP wellbeing service. If you're in immediate danger, call 999.</p>
+        </div>
+
         <div class="top-actions">
             <h1 class="date-heading"><span class="date-sub">Today</span><span id="today-date">Saturday 14 November</span></h1>
             <button class="smart-toggle-btn" aria-expanded="false" aria-controls="smartDrawer" onclick="toggleDrawer()">Need a prompt?</button>
@@ -61,16 +83,79 @@
             <ol class="week-beats" id="weekBeats"></ol>
         </section>
 
-        <div class="mood-bar" role="group" aria-label="How are you feeling?">
-            <button class="mood-pill" data-mood="happy" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Happy</button>
-            <button class="mood-pill" data-mood="calm" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Calm</button>
-            <button class="mood-pill" data-mood="reflective" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Reflective</button>
-            <button class="mood-pill" data-mood="stressed" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Stressed</button>
+        <!-- Voice & Smart AI Check-in Action Bar -->
+        <div class="voice-action-bar">
+            <button type="button" class="btn-voice" id="btnVoiceRecord" onclick="toggleVoiceRecording()">
+                <span id="micIcon" aria-hidden="true">🎙️</span>
+                <span id="voiceBtnText">Voice Check-In</span>
+            </button>
+            <button type="button" class="btn-ai-extract" id="btnAiExtract" onclick="extractTelemetryFromContent()">
+                ✨ Auto-Fill Telemetry
+            </button>
+            <span id="voiceStatus" style="font-size: var(--text-xs); color: var(--ink-3);" aria-live="polite"></span>
         </div>
+
+        <!-- Dialect terms detected badge container -->
+        <div id="dialectTermsContainer" class="dialect-terms-list" style="display: none; margin-bottom: 12px;"></div>
+
+        <!-- AI Spoken Reply Card -->
+        <div id="spokenReplyCard" class="spoken-reply-card" style="display: none;">
+            <div style="font-weight: 600; font-size: var(--text-xs); text-transform: uppercase; margin-bottom: 4px; color: var(--ink-3);">Cadence Spoken Feedback:</div>
+            <p id="spokenReplyText"></p>
+        </div>
+
+        <!-- 1-Tap Mood Selector -->
+        <div class="mood-bar" role="group" aria-label="How are you feeling?">
+            <button type="button" class="mood-pill" data-mood="happy" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Happy</button>
+            <button type="button" class="mood-pill" data-mood="calm" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Calm</button>
+            <button type="button" class="mood-pill" data-mood="reflective" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Reflective</button>
+            <button type="button" class="mood-pill" data-mood="stressed" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Stressed</button>
+        </div>
+
+        <!-- Structured Telemetry Section (Sliders) -->
+        <section class="telemetry-section" aria-labelledby="telemetryHeader">
+            <div class="telemetry-toggle-header" id="telemetryHeader" onclick="toggleTelemetryGrid()">
+                <span>Structured Telemetry (Sleep, Stress, Hours)</span>
+                <span id="telemetryToggleIcon">▾</span>
+            </div>
+            <div class="telemetry-grid" id="telemetryGrid">
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="sleepSlider">Sleep (Hours)</label>
+                        <span class="slider-val-badge" id="sleepVal">7.5h</span>
+                    </div>
+                    <input type="range" id="sleepSlider" min="0" max="14" step="0.5" value="7.5" oninput="updateSliderBadge('sleepVal', this.value + 'h')">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="stressSlider">Stress Level (1-10)</label>
+                        <span class="slider-val-badge" id="stressVal">4</span>
+                    </div>
+                    <input type="range" id="stressSlider" min="1" max="10" step="1" value="4" oninput="updateSliderBadge('stressVal', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="fatigueSlider">Fatigue / Pain (1-10)</label>
+                        <span class="slider-val-badge" id="fatigueVal">3</span>
+                    </div>
+                    <input type="range" id="fatigueSlider" min="1" max="10" step="1" value="3" oninput="updateSliderBadge('fatigueVal', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label for="hoursSlider" id="hoursLabel">Study Hours</label>
+                        <span class="slider-val-badge" id="hoursVal">4.0h</span>
+                    </div>
+                    <input type="range" id="hoursSlider" min="0" max="16" step="0.5" value="4.0" oninput="updateSliderBadge('hoursVal', this.value + 'h')">
+                </div>
+            </div>
+        </section>
 
         <div class="tag-container">
             <label for="tagInput" class="sr-only">Add tag</label>
-            <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="Add a tag, then Enter" onkeydown="handleTagInput(event)">
+            <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="Add a tag, then Enter (e.g. #revision, #work)" onkeydown="handleTagInput(event)">
             <div id="activeTags" class="active-tags" aria-live="polite"></div>
         </div>
 
@@ -78,7 +163,7 @@
         <input type="text" id="entryTitle" class="entry-title-input" maxlength="120" placeholder="Title (optional)">
 
         <label for="editor" class="sr-only">Diary Entry Content</label>
-        <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="How was today? A few lines is plenty."></textarea>
+        <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="How was today? A quick voice note or a few typed lines is plenty."></textarea>
 
         <div class="editor-footer">
             <span id="word-count" aria-live="polite">0 words</span>
@@ -91,7 +176,7 @@
         </div>
     </main>
 
-    <!-- Writing prompt drawer. Fixed prompt for now; Lane D's daily_prompt() can fill #dailyPrompt once wired. -->
+    <!-- Writing prompt drawer -->
     <aside class="smart-drawer" id="smartDrawer" aria-label="Writing prompt">
         <div class="drawer-header">
             <h3>Stuck for words?</h3>
@@ -102,13 +187,422 @@
             <h4>Today's prompt</h4>
             <p class="drawer-prompt" id="dailyPrompt">What is one small win from today that you want to remember next month?</p>
             <button class="prompt-btn" onclick="usePrompt()">Start with this</button>
+            <button class="prompt-btn" style="margin-top: 6px; background: transparent;" onclick="refreshDailyPrompt()">New prompt</button>
         </div>
     </aside>
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="music_synth.js"></script>
     <script src="entry_storage.js"></script>
     <script>
+        let currentSelectedMood = '';
+        let currentTags = [];
+        let isRecordingVoice = false;
+        let speechRecognition = null;
+
+        function updateSliderBadge(badgeId, text) {
+            const badge = document.getElementById(badgeId);
+            if (badge) badge.textContent = text;
+        }
+
+        function toggleTelemetryGrid() {
+            const grid = document.getElementById('telemetryGrid');
+            const icon = document.getElementById('telemetryToggleIcon');
+            const isHidden = grid.style.display === 'none';
+            grid.style.display = isHidden ? 'grid' : 'none';
+            icon.textContent = isHidden ? '▾' : '▸';
+        }
+
+        function handleModeChange(newMode) {
+            setStoredUserMode(newMode);
+            applyModeToUI(newMode);
+            showToast(`Switched to ${newMode[0].toUpperCase() + newMode.slice(1)} Mode`);
+        }
+
+        function applyModeToUI(mode) {
+            const badge = document.getElementById('modeBadgeDisplay');
+            const select = document.getElementById('modeSwitcherSelect');
+            const hoursLabel = document.getElementById('hoursLabel');
+
+            if (badge) badge.textContent = mode;
+            if (select) select.value = mode;
+
+            if (hoursLabel) {
+                if (mode === 'student') hoursLabel.textContent = 'Study Hours';
+                else if (mode === 'employed') hoursLabel.textContent = 'Work Hours';
+                else hoursLabel.textContent = 'Activity / Recovery Hours';
+            }
+        }
+
+        function selectMood(button) {
+            document.querySelectorAll('.mood-pill').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.setAttribute('aria-pressed', 'false');
+            });
+            button.classList.add('selected');
+            button.setAttribute('aria-pressed', 'true');
+            currentSelectedMood = button.dataset.mood;
+
+            // Musical auditory feedback: play tone matching the mood
+            const notes = { happy: 392.00, calm: 329.63, reflective: 293.66, stressed: 220.00 };
+            if (window.SmartDiaryMusicSynth && notes[currentSelectedMood]) {
+                window.SmartDiaryMusicSynth.playTone(notes[currentSelectedMood], 0.35, 'sine', currentSelectedMood === 'stressed' ? 0.4 : 0);
+            }
+        }
+
+        function handleTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                let val = event.target.value.trim();
+                if (!val) return;
+                if (!val.startsWith('#')) val = '#' + val;
+                if (!currentTags.includes(val) && currentTags.length < 20) {
+                    currentTags.push(val);
+                    renderTags();
+                }
+                event.target.value = '';
+            }
+        }
+
+        function removeTag(tagToRemove) {
+            currentTags = currentTags.filter(t => t !== tagToRemove);
+            renderTags();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('activeTags');
+            container.replaceChildren();
+            currentTags.forEach(t => {
+                const pill = document.createElement('span');
+                pill.className = 'tag-pill';
+                pill.textContent = t;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'tag-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.setAttribute('aria-label', `Remove tag ${t}`);
+                removeBtn.onclick = () => removeTag(t);
+                pill.appendChild(removeBtn);
+                container.appendChild(pill);
+            });
+        }
+
+        // ---- Speech Recognition & Voice Check-In ----
+        function initSpeechRecognition() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) return null;
+            const rec = new SpeechRec();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-GB';
+
+            rec.onresult = event => {
+                let fullTranscript = '';
+                for (let i = 0; i < event.results.length; i++) {
+                    fullTranscript += event.results[i][0].transcript;
+                }
+                const editor = document.getElementById('editor');
+                editor.value = fullTranscript;
+                updateWordCount();
+            };
+
+            rec.onerror = event => {
+                console.warn('Speech recognition error:', event.error);
+                stopVoiceRecording();
+                showToast('Voice input stopped: ' + event.error);
+            };
+
+            rec.onend = () => {
+                if (isRecordingVoice) stopVoiceRecording();
+            };
+
+            return rec;
+        }
+
+        function toggleVoiceRecording() {
+            if (isRecordingVoice) {
+                stopVoiceRecording();
+                extractTelemetryFromContent();
+            } else {
+                startVoiceRecording();
+            }
+        }
+
+        function startVoiceRecording() {
+            if (!speechRecognition) speechRecognition = initSpeechRecognition();
+            if (!speechRecognition) {
+                showToast('Speech recognition not supported in this browser. You can type freely.');
+                return;
+            }
+            try {
+                speechRecognition.start();
+                isRecordingVoice = true;
+                const btn = document.getElementById('btnVoiceRecord');
+                const text = document.getElementById('voiceBtnText');
+                const status = document.getElementById('voiceStatus');
+                btn.classList.add('recording');
+                text.textContent = 'Listening (Tap to Finish)...';
+                status.textContent = 'Listening to speech (dialect-aware)...';
+            } catch (e) {
+                showToast('Could not start voice recognition.');
+            }
+        }
+
+        function stopVoiceRecording() {
+            if (speechRecognition && isRecordingVoice) {
+                try { speechRecognition.stop(); } catch (e) {}
+            }
+            isRecordingVoice = false;
+            const btn = document.getElementById('btnVoiceRecord');
+            const text = document.getElementById('voiceBtnText');
+            const status = document.getElementById('voiceStatus');
+            btn.classList.remove('recording');
+            text.textContent = 'Voice Check-In';
+            status.textContent = '';
+        }
+
+        // ---- Smart AI Extraction ----
+        async function extractTelemetryFromContent() {
+            const text = document.getElementById('editor').value.trim();
+            if (!text) {
+                showToast('Please type or record a check-in first.');
+                return;
+            }
+
+            showToast('Extracting structured wellbeing data...');
+            const mode = getStoredUserMode();
+            const extraction = await extractCheckinAI(text, mode);
+
+            if (extraction) {
+                // Check safety flag
+                if (extraction.safety && extraction.safety.level === 'crisis') {
+                    const banner = document.getElementById('crisisBanner');
+                    banner.style.display = 'flex';
+                }
+
+                // Auto-set mood
+                if (extraction.mood) {
+                    let mKey = 'calm';
+                    if (extraction.mood >= 7.5) mKey = 'happy';
+                    else if (extraction.mood >= 5.5) mKey = 'calm';
+                    else if (extraction.mood >= 4.0) mKey = 'reflective';
+                    else mKey = 'stressed';
+
+                    const pill = document.querySelector(`.mood-pill[data-mood="${mKey}"]`);
+                    if (pill) selectMood(pill);
+                }
+
+                // Auto-set sliders
+                if (typeof extraction.sleepHours === 'number') {
+                    const slider = document.getElementById('sleepSlider');
+                    slider.value = extraction.sleepHours;
+                    updateSliderBadge('sleepVal', extraction.sleepHours + 'h');
+                }
+                if (typeof extraction.stress === 'number') {
+                    const slider = document.getElementById('stressSlider');
+                    slider.value = extraction.stress;
+                    updateSliderBadge('stressVal', extraction.stress);
+                }
+                if (typeof extraction.fatigue === 'number') {
+                    const slider = document.getElementById('fatigueSlider');
+                    slider.value = extraction.fatigue;
+                    updateSliderBadge('fatigueVal', extraction.fatigue);
+                }
+                const hoursVal = extraction.studyHours !== null ? extraction.studyHours : extraction.workHours;
+                if (typeof hoursVal === 'number') {
+                    const slider = document.getElementById('hoursSlider');
+                    slider.value = hoursVal;
+                    updateSliderBadge('hoursVal', hoursVal + 'h');
+                }
+
+                // Tags
+                if (Array.isArray(extraction.tags)) {
+                    extraction.tags.forEach(t => {
+                        const tag = t.startsWith('#') ? t : '#' + t;
+                        if (!currentTags.includes(tag)) currentTags.push(tag);
+                    });
+                    renderTags();
+                }
+
+                // Dialect terms
+                if (Array.isArray(extraction.dialectTerms) && extraction.dialectTerms.length > 0) {
+                    const container = document.getElementById('dialectTermsContainer');
+                    container.replaceChildren();
+                    container.style.display = 'flex';
+                    extraction.dialectTerms.forEach(d => {
+                        const span = document.createElement('span');
+                        span.className = 'dialect-pill';
+                        span.textContent = `Dialect: "${d.heard}" → ${d.meaning}`;
+                        container.appendChild(span);
+                    });
+                }
+
+                // Spoken reply
+                if (extraction.spokenReply) {
+                    const replyCard = document.getElementById('spokenReplyCard');
+                    const replyText = document.getElementById('spokenReplyText');
+                    replyCard.style.display = 'block';
+                    replyText.textContent = extraction.spokenReply;
+                }
+
+                showToast('Telemetry updated with AI insights.');
+            }
+        }
+
+        // ---- Save Entry ----
+        async function saveCurrentEntry() {
+            const title = document.getElementById('entryTitle').value.trim() || 'Daily Check-in';
+            const text = document.getElementById('editor').value.trim();
+            const mood = currentSelectedMood || 'calm';
+            const sleepHours = parseFloat(document.getElementById('sleepSlider').value) || 7.5;
+            const stress = parseInt(document.getElementById('stressSlider').value, 10) || 4;
+            const fatigue = parseInt(document.getElementById('fatigueSlider').value, 10) || 3;
+            const hoursVal = parseFloat(document.getElementById('hoursSlider').value) || 0;
+            const mode = getStoredUserMode();
+
+            if (!text && !title) {
+                showToast('Please write something for your entry.');
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+
+            const entryData = {
+                date: today,
+                title,
+                mood,
+                text,
+                tags: currentTags,
+                sleepHours,
+                sleepQuality: sleepHours >= 7 ? 'good' : (sleepHours >= 5 ? 'ok' : 'poor'),
+                stress,
+                fatigue,
+                studyHours: mode === 'student' ? hoursVal : 0,
+                workHours: mode === 'employed' ? hoursVal : 0,
+                mode,
+                summary: text.slice(0, 150)
+            };
+
+            try {
+                await createDiaryEntry(entryData);
+                showToast('Entry saved successfully!');
+                renderWeekBar();
+            } catch (e) {
+                showToast('Error saving entry: ' + e.message);
+            }
+        }
+
+        // ---- Week as a Bar of Music ----
+        async function renderWeekBar() {
+            const list = document.getElementById('weekBeats');
+            if (!list) return;
+            const entries = await loadDiaryEntries();
+            const now = new Date();
+            const monday = new Date(now);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            list.replaceChildren();
+
+            const frequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
+
+            days.forEach((dayName, idx) => {
+                const dayDate = new Date(monday);
+                dayDate.setDate(monday.getDate() + idx);
+                const dateStr = dayDate.toISOString().split('T')[0];
+
+                const matching = entries.find(e => String(e.date).startsWith(dateStr));
+
+                const li = document.createElement('li');
+                li.className = 'week-beat';
+                if (dayDate.toDateString() === now.toDateString()) li.classList.add('today');
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'beat-name';
+                nameSpan.textContent = dayName;
+
+                const noteBtn = document.createElement('button');
+                noteBtn.className = 'beat-note';
+                noteBtn.type = 'button';
+                noteBtn.setAttribute('aria-label', `${dayName}: ${matching ? matching.mood : 'No entry'}`);
+
+                if (matching) {
+                    li.classList.add('has-entry');
+                    const mKey = moodKey(matching.mood);
+                    if (mKey) li.dataset.mood = mKey;
+                    const head = document.createElement('span');
+                    head.className = 'note-head';
+                    head.setAttribute('aria-hidden', 'true');
+                    noteBtn.appendChild(head);
+                }
+
+                noteBtn.onclick = () => {
+                    if (window.SmartDiaryMusicSynth) {
+                        const freq = frequencies[idx];
+                        window.SmartDiaryMusicSynth.playTone(freq, 0.4, 'sine', matching && matching.stress > 6 ? 0.3 : 0);
+                    }
+                    if (matching) showToast(`${dayName}: ${matching.title} (${matching.mood})`);
+                };
+
+                li.appendChild(nameSpan);
+                li.appendChild(noteBtn);
+                list.appendChild(li);
+            });
+        }
+
+        // ---- Read Aloud with SpeechSynthesis ----
+        function readEntryAloud() {
+            const title = document.getElementById('entryTitle').value;
+            const text = document.getElementById('editor').value;
+            const content = (title ? title + '. ' : '') + text;
+
+            if (!content.trim()) {
+                showToast('Nothing to read aloud.');
+                return;
+            }
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(content);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+                showToast('Reading entry aloud...');
+            } else {
+                showToast('Text-to-speech not supported.');
+            }
+        }
+
+        // ---- Prompt Drawer ----
+        function toggleDrawer() {
+            document.getElementById('smartDrawer').classList.toggle('open');
+        }
+
+        async function refreshDailyPrompt() {
+            const mode = getStoredUserMode();
+            const entries = await loadDiaryEntries();
+            const prompt = await getDailyPromptAI(mode, {}, entries.slice(0, 3));
+            document.getElementById('dailyPrompt').textContent = prompt;
+        }
+
+        function usePrompt() {
+            const prompt = document.getElementById('dailyPrompt').textContent;
+            const editor = document.getElementById('editor');
+            if (editor.value) editor.value += '\n\n' + prompt + '\n';
+            else editor.value = prompt + '\n';
+            toggleDrawer();
+            updateWordCount();
+        }
+
+        function updateWordCount() {
+            const text = document.getElementById('editor').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            document.getElementById('word-count').textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+        }
+
+        document.getElementById('editor').addEventListener('input', updateWordCount);
+
         function showToast(message) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -122,56 +616,22 @@
             }, 2500);
         }
 
-        // UK date, no year: "Saturday 14 November"
-        document.getElementById('today-date').innerText =
-            new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-
-        // Draw this week (Mon-Sun) as seven beats. Filled note = an entry that day, coloured by its mood.
-        async function renderWeekBeats() {
-            const list = document.getElementById('weekBeats');
-            let entries = [];
-            try { entries = await loadDiaryEntries(); } catch (error) { entries = []; }
-
-            const today = new Date();
-            const monday = new Date(today);
-            monday.setHours(0, 0, 0, 0);
-            monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-
-            const byDay = {};
-            entries.forEach(entry => {
-                const d = new Date(entry.date);
-                if (isNaN(d)) return;
-                const key = d.toDateString();
-                // newest entry for that day wins (ids are creation timestamps / increasing)
-                if (!byDay[key] || (Number(entry.id) || 0) > (Number(byDay[key].id) || 0)) byDay[key] = entry;
-            });
-
-            list.replaceChildren();
-            for (let i = 0; i < 7; i++) {
-                const day = new Date(monday);
-                day.setDate(monday.getDate() + i);
-                const entry = byDay[day.toDateString()];
-                const li = document.createElement('li');
-                li.className = 'beat' + (day.toDateString() === today.toDateString() ? ' is-today' : '');
-                const key = entry ? moodKey(entry.mood) : '';
-                if (key) li.dataset.mood = key;
-                const name = day.toLocaleDateString('en-GB', { weekday: 'long' });
-                li.setAttribute('aria-label', entry ? `${name}: checked in${key ? ', ' + moodName(entry.mood) : ''}` : `${name}: no entry`);
-                li.innerHTML = '<span class="note-head" aria-hidden="true"></span>';
-                const letter = document.createElement('span');
-                letter.textContent = name.slice(0, 1);
-                letter.setAttribute('aria-hidden', 'true');
-                li.appendChild(letter);
-                if (entry && !key) li.querySelector('.note-head').style.background = 'var(--ink-3)';
-                list.appendChild(li);
-            }
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
         }
-        renderWeekBeats();
 
-        function setFont(fontType, silent = false) {
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        function setFont(fontType) {
             document.body.classList.remove('font-serif', 'font-mono');
             document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
-
             if (fontType === 'serif') {
                 document.body.classList.add('font-serif');
                 document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
@@ -181,41 +641,7 @@
             } else {
                 document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
             }
-
             localStorage.setItem('selected-font', fontType);
-            if (!silent) {
-                const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`Font switched to ${labels[fontType]}`);
-            }
-        }
-
-        function applySavedPreferences() {
-            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
-            const savedFont = localStorage.getItem('selected-font') || 'default';
-            setFont(savedFont, true);
-
-            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
-                if (localStorage.getItem(cls) === 'true') {
-                    document.body.classList.add(cls);
-                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
-                    const btn = document.getElementById(btnMap[cls]);
-                    if (btn) btn.setAttribute('aria-pressed', 'true');
-                }
-            });
-        }
-        applySavedPreferences();
-
-        function toggleDarkMode() {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
-        }
-
-        function toggleA11yPanel() {
-            const panel = document.getElementById('a11yPanel');
-            const btn = document.getElementById('a11yToggleBtn');
-            const isOpen = panel.classList.toggle('open');
-            btn.setAttribute('aria-expanded', isOpen);
         }
 
         function toggleA11yFeature(className, btn, label) {
@@ -225,125 +651,35 @@
             showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
         }
 
-        function readEntryAloud() {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const title = document.getElementById('entryTitle').value;
-                const text = document.getElementById('editor').value;
-                const content = (title ? title + ". " : "") + (text || "Your entry is currently empty.");
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance(content));
-                showToast('Reading entry aloud...');
-            } else {
-                showToast('Text-to-speech not supported in this browser');
-            }
-        }
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont);
 
-        function toggleDrawer() {
-            const drawer = document.getElementById('smartDrawer');
-            const isOpen = drawer.classList.toggle('open');
-            document.querySelector('.smart-toggle-btn').setAttribute('aria-expanded', isOpen);
-        }
-
-        // Mood is optional: tap again to clear. The pill itself shows the state, so no toast.
-        function selectMood(btn) {
-            const wasSelected = btn.classList.contains('selected');
-            document.querySelectorAll('.mood-pill').forEach(b => {
-                b.classList.remove('selected');
-                b.setAttribute('aria-pressed', 'false');
-            });
-            if (!wasSelected) {
-                btn.classList.add('selected');
-                btn.setAttribute('aria-pressed', 'true');
-            }
-        }
-
-        function usePrompt() {
-            const editor = document.getElementById('editor');
-            const prompt = document.getElementById('dailyPrompt').innerText.trim();
-            editor.value = (editor.value ? editor.value.trimEnd() + '\n\n' : '') + prompt + '\n';
-            editor.dispatchEvent(new Event('input'));
-            editor.focus();
-            toggleDrawer();
-        }
-
-        async function saveCurrentEntry() {
-            const titleInput = document.getElementById('entryTitle');
-            const editorInput = document.getElementById('editor');
-            const title = titleInput.value.trim() || 'Untitled';
-            const text = editorInput.value.trim();
-
-            if (!text) {
-                showToast('Write a few words first, then save.');
-                return;
-            }
-            if (title.length > 120 || text.length > 10000) {
-                showToast('Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
-                return;
-            }
-
-            const selectedMoodBtn = document.querySelector('.mood-pill.selected');
-            const mood = selectedMoodBtn ? selectedMoodBtn.innerText.trim() : '';  // no default: never assume someone is happy
-            const tags = Array.from(document.querySelectorAll('#activeTags .tag-badge')).map(el => el.innerText);
-
-            const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-            const newEntry = {
-                id: Date.now(),
-                date: dateStr,
-                title: title,
-                mood: mood,
-                text: text,
-                tags: tags
-            };
-
-            try {
-                await createDiaryEntry(newEntry);
-            } catch (error) {
-                showToast(`${error.message}`);
-                return;
-            }
-
-            document.getElementById('auto-save-status').innerText = 'Saved';
-            showToast(getEntrySessionToken() ? 'Saved to your account.' : 'Saved on this device. Log in to keep it across devices.');
-
-            // Clear form and add today's note to the week bar
-            titleInput.value = '';
-            editorInput.value = '';
-            document.getElementById('activeTags').replaceChildren();
-            document.getElementById('word-count').innerText = '0 words';
-            document.querySelectorAll('.mood-pill.selected').forEach(b => selectMood(b));
-            renderWeekBeats();
-        }
-
-        const editor = document.getElementById('editor');
-        const wordCountDisplay = document.getElementById('word-count');
-        const saveStatus = document.getElementById('auto-save-status');
-
-        editor.addEventListener('input', () => {
-            const text = editor.value.trim();
-            const words = text === '' ? 0 : text.split(/\s+/).length;
-            wordCountDisplay.innerText = `${words} ${words === 1 ? 'word' : 'words'}`;
-            saveStatus.innerText = words ? 'Not saved yet' : '';
-        });
-
-        function handleTagInput(e) {
-            if (e.key === 'Enter' && e.target.value.trim() !== '') {
-                e.preventDefault();
-                if (document.querySelectorAll('#activeTags .tag-badge').length >= 20) {
-                    showToast('You can add up to 20 tags per entry.');
-                    e.target.value = '';
-                    return;
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
                 }
-                const cleanTag = e.target.value.trim().replace(/#/g, '').slice(0, 30);
-                if (!cleanTag) return;
-                const tagContainer = document.getElementById('activeTags');
-                const span = document.createElement('span');
-                span.innerText = `#${cleanTag}`;
-                span.className = 'tag-badge';
-                tagContainer.appendChild(span);
-                e.target.value = '';
+            });
+
+            const mode = getStoredUserMode();
+            applyModeToUI(mode);
+
+            // Update auth link
+            const token = getEntrySessionToken();
+            if (token && token !== 'expired') {
+                document.getElementById('navAccountLink').textContent = 'My Account';
+                document.getElementById('navSignUpLink').style.display = 'none';
             }
         }
+
+        // Initialize Today view
+        applySavedPreferences();
+        renderWeekBar();
+        refreshDailyPrompt();
     </script>
 </body>
 </html>

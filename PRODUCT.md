@@ -6,7 +6,7 @@ product
 
 ## Users
 
-Students at North East universities (Durham, Newcastle, Northumbria, Sunderland, Teesside), plus some employed or unemployed users in the same region. They check in once a day, usually on a phone, often tired, sometimes stressed about exams. A check-in takes seconds: a short voice note or a few typed lines. Once a week they come back to hear their week as a short piece of music and read what their own data shows.
+Students. especially those at North East universities (Durham, Newcastle, Northumbria, Sunderland, Teesside) and institutions at lower levels, plus some employed or unemployed users in the same region. They check in once a day, usually on a phone, often tired, sometimes stressed about exams. A check-in takes seconds: a short voice note or a few typed lines. Once a week they come back to hear their week as a short piece of music and read what their own data shows.
 
 ## Product Purpose
 

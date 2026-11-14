@@ -3,51 +3,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Calendar - Smart Diary</title>
+    <title>Calendar &amp; Study Tracker - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
     <style>
         .calendar-preview-section {
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 1px solid #e6e6e3;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--line);
         }
         .preview-heading {
-            font-size: 20px;
+            font-size: var(--text-lg);
             font-weight: 700;
-            margin-bottom: 20px;
-            color: #1a1a1a;
+            margin-bottom: 16px;
+            color: var(--ink);
         }
         .day-entry-card {
-            background: #ffffff;
-            border: 1px solid #e6e6e3;
-            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
             padding: 20px;
             margin-bottom: 16px;
-        }
-        .day-entry-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .day-entry-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
-        .empty-day-message {
-            color: #777;
-            font-style: italic;
-            font-size: 14px;
         }
         .btn-delete {
             background: transparent;
             border: 1px solid #e0b4b4;
             color: #b91c1c;
-            padding: 5px 10px;
-            border-radius: 6px;
+            padding: 5px 12px;
+            border-radius: var(--r-sm);
             cursor: pointer;
-            font-size: 12px;
+            font-size: var(--text-xs);
             font-weight: 600;
             margin-top: 10px;
             transition: background-color 0.15s;
@@ -55,20 +39,12 @@
         .btn-delete:hover {
             background: #fee2e2;
         }
-        body.dark-mode .day-entry-card {
-            background: #1a1a1a;
-            border-color: #262626;
-        }
-        body.dark-mode .day-entry-title,
-        body.dark-mode .preview-heading {
-            color: #ffffff;
-        }
-        body.dark-mode .btn-delete {
-            border-color: #7f1d1d;
-            color: #fca5a5;
-        }
-        body.dark-mode .btn-delete:hover {
-            background: #450a0a;
+        .exam-item-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            padding: 16px;
+            margin-bottom: 12px;
         }
     </style>
 </head>
@@ -90,8 +66,8 @@
         <div class="sidebar-footer">
             <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
             <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
-            <a href="account.html" class="account-link">Log in</a>
-            <a href="sign_up.html" class="account-link">Sign up</a>
+            <a href="account.html" class="account-link" id="navAccountLink">Log in</a>
+            <a href="sign_up.html" class="account-link" id="navSignUpLink">Sign up</a>
         </div>
     </aside>
 
@@ -115,32 +91,419 @@
     </div>
 
     <main class="main-content" id="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading">Calendar &amp; Study Schedule</h1>
+        </div>
+
+        <!-- Exam / Schedule Guidance Hero Card -->
+        <section class="exam-hero-card" id="examHeroSection">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span class="exam-phase-badge" id="examPhaseBadge">Early Term Pacing</span>
+                <span style="font-size: var(--text-xs); color: var(--ink-3);" id="examCountdownText">Checking schedule...</span>
+            </div>
+            <h2 style="font-size: var(--text-md); margin-bottom: 6px;" id="examHeroTitle">Smart Revision Guidance</h2>
+            <p style="font-size: var(--text-sm); line-height: 1.6; color: var(--ink-2);" id="examHeroAdvice">
+                Building a steady baseline early in term protects you from burnout later. Aim for consistent 45-minute study intervals with restful sleep.
+            </p>
+        </section>
+
+        <!-- Revision Tracker Progress Section -->
+        <section class="insight-block" id="revisionTrackerBlock" aria-labelledby="trackerHeading">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 id="trackerHeading" style="font-size: var(--text-md);">Revision Goals &amp; Subjects</h2>
+                <button type="button" class="btn-secondary" style="font-size: var(--text-xs); padding: 4px 12px;" onclick="showAddExamModal()">+ Add Exam / Subject</button>
+            </div>
+            <div id="examListContainer"></div>
+        </section>
+
+        <!-- Add/Edit Exam Form Modal (Inline Drawer) -->
+        <div id="addExamBox" class="form-box" style="display: none; max-width: 100%; margin-bottom: 24px;">
+            <h3 style="font-size: var(--text-md);">Add / Edit Exam Goal</h3>
+            <label for="examSubjectInput" style="font-size: var(--text-xs); font-weight: 600;">Subject Name</label>
+            <input type="text" id="examSubjectInput" placeholder="e.g. Algorithms &amp; Data Structures" maxlength="100">
+
+            <label for="examDateInput" style="font-size: var(--text-xs); font-weight: 600;">Exam / Deadline Date</label>
+            <input type="date" id="examDateInput">
+
+            <div style="display: flex; gap: 12px;">
+                <div style="flex: 1;">
+                    <label for="examTargetInput" style="font-size: var(--text-xs); font-weight: 600;">Target Revision Hours</label>
+                    <input type="number" id="examTargetInput" min="1" max="200" step="1" value="20">
+                </div>
+                <div style="flex: 1;">
+                    <label for="examCompletedInput" style="font-size: var(--text-xs); font-weight: 600;">Completed Hours</label>
+                    <input type="number" id="examCompletedInput" min="0" max="200" step="0.5" value="0">
+                </div>
+            </div>
+
+            <label for="examNotesInput" style="font-size: var(--text-xs); font-weight: 600;">Notes (Topics / Strategies)</label>
+            <input type="text" id="examNotesInput" placeholder="e.g. Graph traversals, design patterns" maxlength="300">
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button type="button" class="save-btn" onclick="handleSaveExam()">Save Goal</button>
+                <button type="button" class="btn-secondary" onclick="hideAddExamModal()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Month Navigation and Calendar Grid -->
         <div class="calendar-controls">
-            <h1 class="date-heading" id="month-year" aria-live="polite"></h1>
+            <h2 id="currentMonthYear" style="font-size: var(--text-lg); font-weight: 700;">November 2026</h2>
             <div>
-                <button id="prev-month" aria-label="Previous month">&lt; Prev</button>
-                <button id="next-month" aria-label="Next month">Next &gt;</button>
+                <button class="calendar-nav-btn" onclick="changeMonth(-1)" aria-label="Previous month">&larr; Prev</button>
+                <button class="calendar-nav-btn" onclick="changeMonth(1)" aria-label="Next month">Next &rarr;</button>
             </div>
         </div>
 
-        <div class="calendar-weekdays" aria-hidden="true">
-            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        <div class="calendar-grid">
+            <div class="weekday-header">Mon</div>
+            <div class="weekday-header">Tue</div>
+            <div class="weekday-header">Wed</div>
+            <div class="weekday-header">Thu</div>
+            <div class="weekday-header">Fri</div>
+            <div class="weekday-header">Sat</div>
+            <div class="weekday-header">Sun</div>
         </div>
 
-        <div class="calendar-days" id="calendar-days" role="grid" aria-label="Monthly calendar"></div>
+        <div class="calendar-grid" id="calendarDays"></div>
 
-        <section class="calendar-preview-section" aria-labelledby="preview-heading">
-            <h2 id="preview-heading" class="preview-heading">Select a date above</h2>
-            <div id="selected-date-entries" aria-live="polite">
-                <p class="empty-day-message">Click on any calendar day to view entries written on that day.</p>
-            </div>
+        <!-- Day Entry Preview Card -->
+        <section class="calendar-preview-section">
+            <h3 class="preview-heading" id="selectedDateHeading">Entries for this day</h3>
+            <div id="dayEntriesList"></div>
         </section>
     </main>
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="music_synth.js"></script>
     <script src="entry_storage.js"></script>
     <script>
+        let currentDate = new Date();
+        let selectedDayStr = new Date().toISOString().split('T')[0];
+        let allEntries = [];
+        let allExams = [];
+
+        async function initCalendar() {
+            try {
+                allEntries = await loadDiaryEntries();
+                allExams = await loadExams();
+            } catch (e) {
+                console.warn(e);
+            }
+            renderCalendar();
+            renderExams();
+            renderSelectedDayEntries(selectedDayStr);
+            updateExamGuidance();
+        }
+
+        function renderCalendar() {
+            const daysContainer = document.getElementById('calendarDays');
+            daysContainer.replaceChildren();
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('currentMonthYear').textContent = `${monthNames[month]} ${year}`;
+
+            const firstDay = new Date(year, month, 1);
+            let startingDay = (firstDay.getDay() + 6) % 7; // Mon = 0
+            const lastDate = new Date(year, month + 1, 0).getDate();
+
+            // Empty padding slots
+            for (let i = 0; i < startingDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'day';
+                empty.style.visibility = 'hidden';
+                daysContainer.appendChild(empty);
+            }
+
+            const today = new Date();
+
+            for (let dayNum = 1; dayNum <= lastDate; dayNum++) {
+                const thisDate = new Date(year, month, dayNum);
+                const dateStr = thisDate.toISOString().split('T')[0];
+
+                const dayEl = document.createElement('div');
+                dayEl.className = 'day';
+                dayEl.tabIndex = 0;
+                dayEl.setAttribute('role', 'button');
+
+                if (thisDate.toDateString() === today.toDateString()) {
+                    dayEl.classList.add('today');
+                }
+                if (dateStr === selectedDayStr) {
+                    dayEl.classList.add('selected');
+                }
+
+                const dayEntries = allEntries.filter(e => String(e.date).startsWith(dateStr));
+                if (dayEntries.length > 0) {
+                    dayEl.classList.add('has-entry');
+                    const mKey = moodKey(dayEntries[0].mood);
+                    if (mKey) dayEl.dataset.mood = mKey;
+                }
+
+                const numSpan = document.createElement('span');
+                numSpan.textContent = dayNum;
+                dayEl.appendChild(numSpan);
+
+                if (dayEntries.length > 0) {
+                    const note = document.createElement('span');
+                    note.className = 'note';
+                    note.setAttribute('aria-hidden', 'true');
+                    dayEl.appendChild(note);
+                }
+
+                dayEl.onclick = () => {
+                    document.querySelectorAll('.day').forEach(d => d.classList.remove('selected'));
+                    dayEl.classList.add('selected');
+                    selectedDayStr = dateStr;
+                    renderSelectedDayEntries(dateStr);
+                    if (dayEntries.length > 0 && window.SmartDiaryMusicSynth) {
+                        window.SmartDiaryMusicSynth.playTone(330, 0.3);
+                    }
+                };
+
+                daysContainer.appendChild(dayEl);
+            }
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function renderSelectedDayEntries(dateStr) {
+            const container = document.getElementById('dayEntriesList');
+            const heading = document.getElementById('selectedDateHeading');
+            heading.textContent = `Entries for ${dateStr}`;
+
+            const matching = allEntries.filter(e => String(e.date).startsWith(dateStr));
+            container.replaceChildren();
+
+            if (matching.length === 0) {
+                const p = document.createElement('p');
+                p.className = 'empty-state';
+                p.textContent = 'No diary check-in logged on this date.';
+                container.appendChild(p);
+                return;
+            }
+
+            matching.forEach(entry => {
+                const card = document.createElement('article');
+                card.className = 'day-entry-card';
+
+                const header = document.createElement('div');
+                header.className = 'entry-card-header';
+
+                const title = document.createElement('h4');
+                title.className = 'entry-card-title';
+                title.textContent = entry.title;
+
+                const moodSpan = document.createElement('span');
+                moodSpan.className = 'mood-pill';
+                renderMood(moodSpan, entry.mood);
+
+                header.appendChild(title);
+                header.appendChild(moodSpan);
+                card.appendChild(header);
+
+                if (entry.text) {
+                    const textP = document.createElement('p');
+                    textP.className = 'display-text';
+                    textP.textContent = entry.text;
+                    card.appendChild(textP);
+                }
+
+                // Telemetry summary pills
+                const metaRow = document.createElement('div');
+                metaRow.style.display = 'flex';
+                metaRow.style.gap = '8px';
+                metaRow.style.flexWrap = 'wrap';
+                metaRow.style.marginTop = '8px';
+
+                if (entry.sleepHours !== null) {
+                    const p = document.createElement('span');
+                    p.className = 'tag-pill';
+                    p.textContent = `Sleep: ${entry.sleepHours}h`;
+                    metaRow.appendChild(p);
+                }
+                if (entry.stress !== null) {
+                    const p = document.createElement('span');
+                    p.className = 'tag-pill';
+                    p.textContent = `Stress: ${entry.stress}/10`;
+                    metaRow.appendChild(p);
+                }
+                if (entry.studyHours) {
+                    const p = document.createElement('span');
+                    p.className = 'tag-pill';
+                    p.textContent = `Study: ${entry.studyHours}h`;
+                    metaRow.appendChild(p);
+                }
+
+                card.appendChild(metaRow);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete';
+                delBtn.textContent = 'Delete Entry';
+                delBtn.onclick = async () => {
+                    if (confirm('Delete this entry?')) {
+                        await deleteDiaryEntry(entry.id);
+                        allEntries = await loadDiaryEntries();
+                        renderCalendar();
+                        renderSelectedDayEntries(dateStr);
+                        showToast('Entry deleted.');
+                    }
+                };
+                card.appendChild(delBtn);
+
+                container.appendChild(card);
+            });
+        }
+
+        // ---- Revision Goals & Exam Schedule ----
+        function renderExams() {
+            const container = document.getElementById('examListContainer');
+            container.replaceChildren();
+
+            if (allExams.length === 0) {
+                container.innerHTML = '<p class="empty-state">No revision subjects added yet. Add your upcoming modules or exams to track progress.</p>';
+                return;
+            }
+
+            allExams.forEach(exam => {
+                const card = document.createElement('div');
+                card.className = 'exam-item-card';
+
+                const top = document.createElement('div');
+                top.style.display = 'flex';
+                top.style.justifyContent = 'space-between';
+                top.style.alignItems = 'baseline';
+
+                const title = document.createElement('strong');
+                title.textContent = exam.subject;
+
+                const dateBadge = document.createElement('span');
+                dateBadge.style.fontSize = 'var(--text-xs)';
+                dateBadge.style.color = 'var(--ink-2)';
+                dateBadge.textContent = `Date: ${exam.date}`;
+
+                top.appendChild(title);
+                top.appendChild(dateBadge);
+                card.appendChild(top);
+
+                const pct = Math.min(100, Math.round((exam.completedHours / Math.max(1, exam.targetHours)) * 100));
+
+                const barWrap = document.createElement('div');
+                barWrap.className = 'revision-bar-container';
+                const fill = document.createElement('div');
+                fill.className = 'revision-bar-fill';
+                fill.style.width = `${pct}%`;
+                barWrap.appendChild(fill);
+                card.appendChild(barWrap);
+
+                const bottom = document.createElement('div');
+                bottom.style.display = 'flex';
+                bottom.style.justifyContent = 'space-between';
+                bottom.style.fontSize = 'var(--text-xs)';
+                bottom.style.color = 'var(--ink-3)';
+
+                const progressText = document.createElement('span');
+                progressText.textContent = `${exam.completedHours}h of ${exam.targetHours}h (${pct}%)`;
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'tag-remove';
+                delBtn.textContent = 'Remove';
+                delBtn.onclick = async () => {
+                    await deleteExam(exam.id);
+                    allExams = await loadExams();
+                    renderExams();
+                    updateExamGuidance();
+                    showToast('Exam removed.');
+                };
+
+                bottom.appendChild(progressText);
+                bottom.appendChild(delBtn);
+                card.appendChild(bottom);
+
+                container.appendChild(card);
+            });
+        }
+
+        function updateExamGuidance() {
+            const badge = document.getElementById('examPhaseBadge');
+            const countdown = document.getElementById('examCountdownText');
+            const advice = document.getElementById('examHeroAdvice');
+
+            if (allExams.length === 0) {
+                badge.textContent = 'Early Term';
+                countdown.textContent = 'No upcoming exams';
+                advice.textContent = 'Set up your upcoming module deadlines to activate phase-aware revision guidance and rest ratios.';
+                return;
+            }
+
+            // Find closest exam
+            const now = new Date();
+            const futureExams = allExams
+                .map(e => ({ ...e, parsedDate: new Date(e.date) }))
+                .filter(e => !isNaN(e.parsedDate))
+                .sort((a, b) => a.parsedDate - b.parsedDate);
+
+            if (futureExams.length === 0) return;
+
+            const next = futureExams[0];
+            const diffDays = Math.ceil((next.parsedDate - now) / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 3) {
+                badge.textContent = 'Exam Period';
+                countdown.textContent = `${next.subject} in ${Math.max(0, diffDays)} days!`;
+                advice.textContent = 'Exams are here. Prioritise cognitive rest between sessions, stay hydrated, and protect a minimum 7.5 hours sleep.';
+            } else if (diffDays <= 14) {
+                badge.textContent = 'Pre-Exam Focus';
+                countdown.textContent = `${next.subject} in ${diffDays} days`;
+                advice.textContent = 'Pre-exam window: maintain structured 50-minute revision blocks, test yourself with active recall, and avoid late night cramming.';
+            } else {
+                badge.textContent = 'Early Term Pacing';
+                countdown.textContent = `${next.subject} in ${diffDays} days`;
+                advice.textContent = 'Early term pace: build consistent study baselines, balance revision with recovery walks, and avoid early fatigue.';
+            }
+        }
+
+        function showAddExamModal() {
+            document.getElementById('addExamBox').style.display = 'flex';
+        }
+
+        function hideAddExamModal() {
+            document.getElementById('addExamBox').style.display = 'none';
+        }
+
+        async function handleSaveExam() {
+            const subject = document.getElementById('examSubjectInput').value.trim();
+            const dateStr = document.getElementById('examDateInput').value;
+            const targetHours = parseFloat(document.getElementById('examTargetInput').value) || 20;
+            const completedHours = parseFloat(document.getElementById('examCompletedInput').value) || 0;
+            const notes = document.getElementById('examNotesInput').value.trim();
+
+            if (!subject || !dateStr) {
+                showToast('Please provide both subject name and exam date.');
+                return;
+            }
+
+            await saveExam({
+                subject,
+                date: dateStr,
+                targetHours,
+                completedHours,
+                notes
+            });
+
+            hideAddExamModal();
+            allExams = await loadExams();
+            renderExams();
+            updateExamGuidance();
+            showToast('Exam schedule updated!');
+        }
+
         function showToast(message) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -154,10 +517,22 @@
             }, 2500);
         }
 
-        function setFont(fontType, silent = false) {
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        function setFont(fontType) {
             document.body.classList.remove('font-serif', 'font-mono');
             document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
-
             if (fontType === 'serif') {
                 document.body.classList.add('font-serif');
                 document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
@@ -167,41 +542,7 @@
             } else {
                 document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
             }
-
             localStorage.setItem('selected-font', fontType);
-            if (!silent) {
-                const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`Font switched to ${labels[fontType]}`);
-            }
-        }
-
-        function applySavedPreferences() {
-            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
-            const savedFont = localStorage.getItem('selected-font') || 'default';
-            setFont(savedFont, true);
-
-            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
-                if (localStorage.getItem(cls) === 'true') {
-                    document.body.classList.add(cls);
-                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
-                    const btn = document.getElementById(btnMap[cls]);
-                    if (btn) btn.setAttribute('aria-pressed', 'true');
-                }
-            });
-        }
-        applySavedPreferences();
-
-        function toggleDarkMode() {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
-        }
-
-        function toggleA11yPanel() {
-            const panel = document.getElementById('a11yPanel');
-            const btn = document.getElementById('a11yToggleBtn');
-            const isOpen = panel.classList.toggle('open');
-            btn.setAttribute('aria-expanded', isOpen);
         }
 
         function toggleA11yFeature(className, btn, label) {
@@ -211,127 +552,29 @@
             showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
         }
 
-        const monthYearText = document.getElementById("month-year");
-        const calendarDays = document.getElementById("calendar-days");
-        let currentDate = new Date();
-        let activeDateStr = null;
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont);
 
-        function renderCalendar(date) {
-            calendarDays.innerHTML = "";
-            const year = date.getFullYear();
-            const month = date.getMonth();
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            
-            monthYearText.innerText = `${monthNames[month]} ${year}`;
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const lastDay = new Date(year, month + 1, 0).getDate();
-
-            for (let x = 0; x < firstDayIndex; x++) {
-                calendarDays.appendChild(document.createElement("div"));
-            }
-
-            for (let i = 1; i <= lastDay; i++) {
-                const dayBtn = document.createElement("button");
-                dayBtn.type = "button";
-                dayBtn.innerText = i;
-                dayBtn.classList.add("day");
-                
-                const formattedDateStr = `${monthNames[month]} ${i}, ${year}`;
-                dayBtn.setAttribute("aria-label", formattedDateStr);
-
-                if (formattedDateStr === activeDateStr) {
-                    dayBtn.classList.add('today');
-                    dayBtn.setAttribute('aria-current', 'date');
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
                 }
-
-                dayBtn.addEventListener("click", () => {
-                    document.querySelectorAll('.day').forEach(d => {
-                        d.classList.remove('today');
-                        d.removeAttribute('aria-current');
-                    });
-                    
-                    dayBtn.classList.add('today');
-                    dayBtn.setAttribute('aria-current', 'date');
-                    activeDateStr = formattedDateStr;
-
-                    showEntriesForDate(formattedDateStr, true).catch(error => showToast(`${error.message}`));
-                });
-
-                calendarDays.appendChild(dayBtn);
-            }
-        }
-
-        async function showEntriesForDate(dateStr, announce = false) {
-            const titleEl = document.getElementById('preview-heading');
-            const container = document.getElementById('selected-date-entries');
-            
-            titleEl.innerText = `Entries for ${dateStr}`;
-            
-            const entries = await loadDiaryEntries();
-
-            const matchingEntries = entries.filter(e => e.date === dateStr);
-
-            if (matchingEntries.length === 0) {
-                const emptyMessage = document.createElement('p');
-                emptyMessage.className = 'empty-day-message';
-                emptyMessage.textContent = `No entries found for ${dateStr}.`;
-                container.replaceChildren(emptyMessage);
-                if (announce) showToast(`No entries on ${dateStr}`);
-                return;
-            }
-
-            container.replaceChildren();
-            matchingEntries.forEach(entry => {
-                const card = document.createElement('div');
-                card.className = 'day-entry-card';
-                card.innerHTML = `
-                    <div class="day-entry-header">
-                        <h3 class="day-entry-title"></h3>
-                        <span class="day-entry-mood"></span>
-                    </div>
-                    <p class="day-entry-text" style="color: inherit; line-height: 1.6; font-size: 15px;"></p>
-                    <div class="day-entry-tags" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
-                    <button type="button" class="btn-delete">Delete</button>
-                `;
-                card.querySelector('.day-entry-title').textContent = entry.title || '';
-                renderMood(card.querySelector('.day-entry-mood'), entry.mood);
-                card.querySelector('.day-entry-text').textContent = entry.text || '';
-                (Array.isArray(entry.tags) ? entry.tags : []).forEach(tag => {
-                    const badge = document.createElement('span');
-                    badge.className = 'tag-badge';
-                    badge.textContent = tag;
-                    card.querySelector('.day-entry-tags').appendChild(badge);
-                });
-                const deleteButton = card.querySelector('.btn-delete');
-                deleteButton.setAttribute('aria-label', `Delete entry ${entry.title || ''}`);
-                deleteButton.addEventListener('click', () => deleteCalendarEntry(entry.id, dateStr));
-                container.appendChild(card);
             });
 
-            if (announce) showToast(`Loaded entries for ${dateStr}`);
-        }
-
-        async function deleteCalendarEntry(entryId, dateStr) {
-            try {
-                await deleteDiaryEntry(entryId);
-                await showEntriesForDate(dateStr, false);
-                showToast('Entry deleted');
-            } catch (error) {
-                showToast(`${error.message}`);
+            const token = getEntrySessionToken();
+            if (token && token !== 'expired') {
+                document.getElementById('navAccountLink').textContent = 'My Account';
+                document.getElementById('navSignUpLink').style.display = 'none';
             }
         }
 
-        document.getElementById("prev-month").addEventListener("click", () => {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar(currentDate);
-        });
-
-        document.getElementById("next-month").addEventListener("click", () => {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar(currentDate);
-        });
-
-        renderCalendar(currentDate);
+        applySavedPreferences();
+        initCalendar();
     </script>
 </body>
 </html>

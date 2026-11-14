@@ -2,42 +2,237 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Account - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Primary Navigation">
         <div>
             <div class="brand">Smart Diary</div>
-            <ul class="nav-menu">
-                <li><a href="user_interface.html">Today</a></li>
-                <li><a href="entries.html">All Entries</a></li>
-                <li><a href="calendar.html">Calendar</a></li>
-                <li><a href="insights.html">Insights</a></li>
-            </ul>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html">Today</a></li>
+                    <li><a href="entries.html">All Entries</a></li>
+                    <li><a href="calendar.html">Calendar</a></li>
+                    <li><a href="insights.html">Insights</a></li>
+                </ul>
+            </nav>
         </div>
         <div class="sidebar-footer">
-            <a href="account.html" class="account-link active">👤 Account / Log In</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link active" id="navAccountLink" aria-current="page">Log in</a>
+            <a href="sign_up.html" class="account-link" id="navSignUpLink">Sign up</a>
         </div>
     </aside>
 
-    <main class="main-content">
-        <div class="top-actions">
-            <h1 class="date-heading">Welcome To Your Smart Diary</h1>
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+        <h3>
+            <span>Display &amp; accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
         </div>
-        <p style="color: #5a5e62; margin-bottom: 24px;">Sign in to sync your entries across devices.</p>
 
-        <form class="form-box" onsubmit="event.preventDefault();"> <!-- do backend API here-->
-            <label style="font-size: 14px; font-weight: 600;">Email</label>
-            <input type="email" required placeholder="you@example.com">
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">Larger text</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">High contrast</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">Wider letter spacing</button>
+    </div>
 
-            <label style="font-size: 14px; font-weight: 600;">Password</label>
-            <input type="password" required placeholder="••••••••">
+    <main class="main-content" id="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading" id="accountHeading">Account &amp; Profile</h1>
+        </div>
+        <p style="margin-bottom: 24px;" id="accountSubtext">Sign in to sync your entries across devices and securely back up your wellbeing data.</p>
 
-            <button type="submit" class="save-btn" style="width: 100%;">Log In</button>
+        <!-- Signed-In Profile View -->
+        <div id="signedInView" style="display: none;">
+            <div class="day-entry-card">
+                <h3 style="margin-bottom: 8px;">Signed in as <span id="profileUsername"></span></h3>
+                <p style="font-size: var(--text-sm); color: var(--ink-2); margin-bottom: 16px;">
+                    Your diary entries and revision goals are synced with your secure account.
+                </p>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="profileModeSelect" style="display: block; font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; margin-bottom: 6px;">Demographic / Operating Mode</label>
+                    <select id="profileModeSelect" class="mode-select" style="width: 100%; max-width: 300px;" onchange="updateProfileMode(this.value)">
+                        <option value="student">Student Mode (Exam Calendar &amp; Revision Tracker)</option>
+                        <option value="employed">Employed / Work Mode (Pacing &amp; Adjustments)</option>
+                        <option value="unemployed">Unemployed / Recovery Mode (Energy Baseline &amp; Social Support)</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn-secondary" onclick="handleLogout()">Log out</button>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <form class="form-box" id="login-form">
+            <label for="login-username" style="font-size: 14px; font-weight: 600;">Username</label>
+            <input type="text" id="login-username" required minlength="3" maxlength="32" autocomplete="username" placeholder="Your username" aria-describedby="login-username-error">
+            <small class="field-error" id="login-username-error" aria-live="polite"></small>
+
+            <label for="login-password" style="font-size: 14px; font-weight: 600;">Password</label>
+            <input type="password" id="login-password" required maxlength="72" autocomplete="current-password" placeholder="••••••••" aria-describedby="login-password-error">
+            <small class="field-error" id="login-password-error" aria-live="polite"></small>
+
+            <button type="submit" class="save-btn" style="width: 100%;">Log in</button>
         </form>
+
+        <p class="account-switch" id="account-switch">New here? <a href="sign_up.html">Create an account</a></p>
     </main>
 
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="entry_storage.js"></script>
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const loginUsername = document.getElementById('login-username');
+        const loginPassword = document.getElementById('login-password');
+        const signedInView = document.getElementById('signedInView');
+        const accountSwitch = document.getElementById('account-switch');
+        const usernamePattern = /^[A-Za-z0-9_]{3,32}$/;
+
+        function updateAccountDisplay() {
+            const token = getEntrySessionToken();
+            const signedIn = token && token !== 'expired';
+            const profile = getStoredUserProfile();
+
+            loginForm.style.display = signedIn ? 'none' : 'flex';
+            accountSwitch.style.display = signedIn ? 'none' : 'block';
+            signedInView.style.display = signedIn ? 'block' : 'none';
+
+            if (signedIn && profile) {
+                document.getElementById('profileUsername').textContent = profile.username;
+                document.getElementById('profileModeSelect').value = profile.mode || 'student';
+            }
+        }
+
+        loginForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const username = loginUsername.value.trim();
+            const password = loginPassword.value;
+
+            if (!usernamePattern.test(username)) {
+                document.getElementById('login-username-error').textContent = 'Use 3–32 letters, numbers, or underscores.';
+                return;
+            }
+            if (password.length < 8) {
+                document.getElementById('login-password-error').textContent = 'Password must be at least 8 characters.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${ENTRY_API_BASE}/login-account`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+                if (result.authenticated && result.session_token) {
+                    setEntrySessionToken(result.session_token, result.user || { username, mode: 'student' });
+                    showToast('Login successful!');
+                    setTimeout(() => {
+                        window.location.href = 'user_interface.html';
+                    }, 500);
+                } else {
+                    showToast(result.message || 'Incorrect username or password.');
+                }
+            } catch (error) {
+                showToast('Could not reach backend server.');
+            }
+        });
+
+        async function updateProfileMode(mode) {
+            setStoredUserMode(mode);
+            showToast(`Operating mode updated to ${mode.toUpperCase()}`);
+        }
+
+        async function handleLogout() {
+            try {
+                await accountEntriesRequest('/logout', { method: 'POST' });
+            } catch (e) {}
+            clearEntrySession();
+            showToast('Logged out.');
+            updateAccountDisplay();
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        function setFont(fontType) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+            localStorage.setItem('selected-font', fontType);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+
+            updateAccountDisplay();
+        }
+
+        applySavedPreferences();
+    </script>
 </body>
 </html>

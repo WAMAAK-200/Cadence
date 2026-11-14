@@ -27,8 +27,17 @@ from functools import lru_cache
 from pathlib import Path
 import os
 
-import anthropic
-from dotenv import load_dotenv
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    def load_dotenv():
+        pass
 
 try:  # works both as `ai_backend.core` and when run from inside ai_backend/
     from . import offline
@@ -167,9 +176,11 @@ def clamp_extraction(e: CheckinExtraction) -> CheckinExtraction:
 _client = None
 
 
-def get_client() -> anthropic.Anthropic:
+def get_client():
     # Created lazily so importing this module never fails when the key is missing.
     global _client
+    if anthropic is None:
+        raise AiError("Anthropic SDK is not installed")
     if _client is None:
         _client = anthropic.Anthropic()
     return _client
@@ -222,14 +233,12 @@ def _claude_call(call: str, system: str, user_text: str, model_cls, effort: str,
             )
         else:
             response = get_client().messages.parse(**kwargs)
-    except anthropic.APIStatusError as e:
+    except Exception as e:
         _log_usage(call, ms(), False)
-        raise AiError(f"{call}: API error {e.status_code}") from e
-    except anthropic.APIConnectionError as e:
-        _log_usage(call, ms(), False)
-        raise AiError(f"{call}: network error") from e
-    except Exception as e:  # e.g. structured output failed validation
-        _log_usage(call, ms(), False)
+        if anthropic is not None and isinstance(e, getattr(anthropic, "APIStatusError", ())):
+            raise AiError(f"{call}: API error {getattr(e, 'status_code', 'unknown')}") from e
+        if anthropic is not None and isinstance(e, getattr(anthropic, "APIConnectionError", ())):
+            raise AiError(f"{call}: network error") from e
         raise AiError(f"{call}: {type(e).__name__}") from e
 
     if response.stop_reason in ("refusal", "max_tokens"):
