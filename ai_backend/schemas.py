@@ -101,3 +101,45 @@ class InsightsResponse(BaseModel):
 
 class SpokenReplyResponse(BaseModel):
     text: str
+
+
+# ---------- Shared input for calls 4 and 5 ----------
+
+class EntrySnapshot(BaseModel):
+    """One past entry as the AI sees it: the extracted summary and numbers, never the raw text."""
+    date: str
+    mood: Optional[int] = None
+    stress: Optional[int] = None
+    sleepHours: Optional[float] = None
+    studyHours: Optional[float] = None
+    workHours: Optional[float] = None
+    tags: List[str] = []
+    summary: str = ""
+    safetyLevel: SafetyLevel = "none"
+
+
+# ---------- Call 4: weekly summary (Insights page) ----------
+
+class WeeklySummaryRequest(BaseModel):
+    mode: UserMode
+    entries: List[EntrySnapshot]  # this week's entries, oldest first
+
+
+class WeeklySummaryResponse(BaseModel):
+    summary: str  # 2-3 sentences
+    recurringTopics: List[str]  # 0-3, each appears in 2+ entries
+    highlight: Optional[str]  # one good moment from the week, or None
+
+
+# ---------- Call 5: daily writing prompt (Smart Assistant drawer) ----------
+
+class DailyPromptRequest(BaseModel):
+    mode: UserMode
+    examPhase: ExamPhase
+    daysToNextExam: Optional[int]
+    nextExamSubject: Optional[str]
+    recent: List[EntrySnapshot]  # last 3 entries, oldest first (may be empty for new users)
+
+
+class DailyPromptResponse(BaseModel):
+    prompt: str  # one question, max ~25 words

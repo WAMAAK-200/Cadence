@@ -3,6 +3,8 @@
     extract_checkin(transcript, mode)  -> CheckinExtraction   (call 1)
     explain_insights(InsightsRequest)  -> InsightsResponse    (call 2)
     spoken_reply(CheckinExtraction)    -> SpokenReplyResponse (call 3)
+    weekly_summary(WeeklySummaryRequest) -> WeeklySummaryResponse (call 4, Insights page)
+    daily_prompt(DailyPromptRequest)   -> DailyPromptResponse (call 5, Smart Assistant; never raises)
 
 Every function raises AiError on any API or parsing failure, so the server
 (Lane E) can catch one exception type and fall back to cached demo data.
@@ -24,9 +26,15 @@ import anthropic
 from dotenv import load_dotenv
 
 try:  # works both as `ai_backend.claude_client` and when run from inside ai_backend/
-    from .schemas import CheckinExtraction, InsightsRequest, InsightsResponse, SafetyFlag, SpokenReplyResponse
+    from .schemas import (
+        CheckinExtraction, DailyPromptRequest, DailyPromptResponse, InsightsRequest, InsightsResponse,
+        SafetyFlag, SpokenReplyResponse, WeeklySummaryRequest, WeeklySummaryResponse,
+    )
 except ImportError:
-    from schemas import CheckinExtraction, InsightsRequest, InsightsResponse, SafetyFlag, SpokenReplyResponse
+    from schemas import (
+        CheckinExtraction, DailyPromptRequest, DailyPromptResponse, InsightsRequest, InsightsResponse,
+        SafetyFlag, SpokenReplyResponse, WeeklySummaryRequest, WeeklySummaryResponse,
+    )
 
 load_dotenv()
 
@@ -44,6 +52,12 @@ CRISIS_MESSAGE = (
     "You can call Samaritans free, any time, on 116 123, or contact your university wellbeing service. "
     "If you're in immediate danger, call 999."
 )
+
+# Fixed texts for calls 4 and 5 (no AI call needed in these cases).
+HELPLINE_LINE = "If things still feel heavy, Samaritans are free on 116 123, any time."
+DEFAULT_DAILY_PROMPT = "What is one small win from today that you want to remember next month?"
+CRISIS_DAILY_PROMPT = "You don't have to write anything today. " + HELPLINE_LINE
+EMPTY_WEEK_SUMMARY = "No check-ins yet this week. Even a 10-second one adds a note to this week's composition."
 
 
 class AiError(Exception):
@@ -245,6 +259,42 @@ def spoken_reply(entry: CheckinExtraction) -> SpokenReplyResponse:
     if entry.safety.level == "crisis":
         return SpokenReplyResponse(text=CRISIS_MESSAGE)
     return _call("reply", load_system_prompt("spoken-reply"), entry.model_dump_json(), SpokenReplyResponse, effort="low")
+
+
+def weekly_summary(request: WeeklySummaryRequest) -> WeeklySummaryResponse:
+    """Call 4: this week's entry snapshots -> short round-up for the Insights page."""
+    if not request.entries:
+        return WeeklySummaryResponse(summary=EMPTY_WEEK_SUMMARY, recurringTopics=[], highlight=None)
+
+    system = (
+        load_system_prompt("weekly-summary")
+        .replace("{{MODE}}", request.mode)
+        .replace("{{ENTRY_COUNT}}", str(len(request.entries)))  # counted in code, not by the AI
+    )
+    result = _call("weekly", system, request.model_dump_json(), WeeklySummaryResponse, effort="low")
+    result.recurringTopics = [t.lower() for t in result.recurringTopics][:3]
+    # A hard week always ends with the helpline, even if the model forgot it.
+    if any(e.safetyLevel != "none" for e in request.entries) and "116 123" not in result.summary:
+        result.summary = f"{result.summary.rstrip()} {HELPLINE_LINE}"
+    return result
+
+
+def daily_prompt(request: DailyPromptRequest, today: str | None = None) -> DailyPromptResponse:
+    """Call 5: one journaling question for today. Never raises: falls back to a default prompt."""
+    if request.recent and request.recent[-1].safetyLevel == "crisis":
+        return DailyPromptResponse(prompt=CRISIS_DAILY_PROMPT)
+    if not request.recent and request.examPhase == "none":
+        return DailyPromptResponse(prompt=DEFAULT_DAILY_PROMPT)  # nothing to personalise yet: skip the call
+
+    system = (
+        load_system_prompt("daily-prompt")
+        .replace("{{MODE}}", request.mode)
+        .replace("{{TODAY}}", today or date.today().isoformat())
+    )
+    try:
+        return _call("prompt", system, request.model_dump_json(), DailyPromptResponse, effort="low")
+    except AiError:
+        return DailyPromptResponse(prompt=DEFAULT_DAILY_PROMPT)
 
 
 if __name__ == "__main__":

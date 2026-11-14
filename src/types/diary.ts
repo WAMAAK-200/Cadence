@@ -111,6 +111,48 @@ export interface SpokenReplyResponse {
   text: string; // 1–2 warm sentences, max ~35 words, read aloud (ElevenLabs optional)
 }
 
+// ---------- Shared input for calls 4 and 5 ----------
+
+// One past entry as the AI sees it: extracted summary and numbers, never the raw text.
+export interface EntrySnapshot {
+  date: string; // YYYY-MM-DD
+  mood?: number | null;
+  stress?: number | null;
+  sleepHours?: number | null;
+  studyHours?: number | null;
+  workHours?: number | null;
+  tags?: string[];
+  summary?: string;
+  safetyLevel?: SafetyLevel;
+}
+
+// ---------- Call 4: weekly summary (Insights page "Weekly AI Summary") ----------
+
+export interface WeeklySummaryRequest {
+  mode: UserMode;
+  entries: EntrySnapshot[]; // this week's entries, oldest first
+}
+
+export interface WeeklySummaryResponse {
+  summary: string; // 2–3 sentences, includes the entry count
+  recurringTopics: string[]; // 0–3, each appears in 2+ entries
+  highlight: string | null; // one good moment from the week
+}
+
+// ---------- Call 5: daily writing prompt (Smart Assistant drawer) ----------
+
+export interface DailyPromptRequest {
+  mode: UserMode;
+  examPhase: ExamPhase;
+  daysToNextExam: number | null;
+  nextExamSubject: string | null;
+  recent: EntrySnapshot[]; // last 3 entries, oldest first; may be empty
+}
+
+export interface DailyPromptResponse {
+  prompt: string; // one question, max ~25 words
+}
+
 // ---------- Weekly composition input (Lane C, Tone.js) ----------
 
 // Numbers only. No transcript or summary text ever goes to the music generator.
@@ -125,7 +167,7 @@ export interface WeeklyFeatures {
 
 // ---------- Cost logging ----------
 
-export type AiCallName = 'checkin' | 'insights' | 'reply';
+export type AiCallName = 'checkin' | 'insights' | 'reply' | 'weekly' | 'prompt';
 
 export interface AiUsageLog {
   call: AiCallName;
