@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Calendar - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
     <style>
@@ -87,16 +88,16 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
-            <a href="sign_up.html" class="account-link">✨ Sign Up</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link">Log in</a>
+            <a href="sign_up.html" class="account-link">Sign up</a>
         </div>
     </aside>
 
     <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
         <h3>
-            <span>Style &amp; Accessibility</span>
+            <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
         </h3>
 
@@ -108,9 +109,9 @@
         </div>
 
         <span class="panel-section-label">Accessibility</span>
-        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
-        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
-        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">Larger text</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">High contrast</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">Wider letter spacing</button>
     </div>
 
     <main class="main-content" id="main-content">
@@ -170,7 +171,7 @@
             localStorage.setItem('selected-font', fontType);
             if (!silent) {
                 const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`✍️ Font switched to ${labels[fontType]}`);
+                showToast(`Font switched to ${labels[fontType]}`);
             }
         }
 
@@ -193,7 +194,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         function toggleA11yPanel() {
@@ -253,7 +254,7 @@
                     dayBtn.setAttribute('aria-current', 'date');
                     activeDateStr = formattedDateStr;
 
-                    showEntriesForDate(formattedDateStr, true).catch(error => showToast(`⚠️ ${error.message}`));
+                    showEntriesForDate(formattedDateStr, true).catch(error => showToast(`${error.message}`));
                 });
 
                 calendarDays.appendChild(dayBtn);
@@ -290,10 +291,10 @@
                     </div>
                     <p class="day-entry-text" style="color: inherit; line-height: 1.6; font-size: 15px;"></p>
                     <div class="day-entry-tags" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
-                    <button type="button" class="btn-delete">🗑️ Delete</button>
+                    <button type="button" class="btn-delete">Delete</button>
                 `;
                 card.querySelector('.day-entry-title').textContent = entry.title || '';
-                card.querySelector('.day-entry-mood').textContent = entry.mood || '';
+                renderMood(card.querySelector('.day-entry-mood'), entry.mood);
                 card.querySelector('.day-entry-text').textContent = entry.text || '';
                 (Array.isArray(entry.tags) ? entry.tags : []).forEach(tag => {
                     const badge = document.createElement('span');
@@ -314,9 +315,9 @@
             try {
                 await deleteDiaryEntry(entryId);
                 await showEntriesForDate(dateStr, false);
-                showToast('🗑️ Entry deleted');
+                showToast('Entry deleted');
             } catch (error) {
-                showToast(`⚠️ ${error.message}`);
+                showToast(`${error.message}`);
             }
         }
 

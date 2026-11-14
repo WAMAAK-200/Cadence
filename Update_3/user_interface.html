@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Today - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
@@ -21,17 +22,17 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
-            <a href="sign_up.html" class="account-link">✨ Sign Up</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link">Log in</a>
+            <a href="sign_up.html" class="account-link">Sign up</a>
         </div>
     </aside>
 
     <!-- Style & Accessibility Settings Panel -->
     <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
         <h3>
-            <span>Style &amp; Accessibility</span>
+            <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
         </h3>
 
@@ -43,65 +44,64 @@
         </div>
 
         <span class="panel-section-label">Accessibility</span>
-        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
-        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
-        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">Larger text</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">High contrast</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">Wider letter spacing</button>
     </div>
 
     <main class="main-content" id="main-content">
         <div class="top-actions">
-            <h1 class="date-heading" id="today-date">Saturday, November 14, 2026</h1>
-            <button class="smart-toggle-btn" aria-expanded="false" aria-controls="smartDrawer" onclick="toggleDrawer()">✨ Smart Assistant</button>
+            <h1 class="date-heading"><span class="date-sub">Today</span><span id="today-date">Saturday 14 November</span></h1>
+            <button class="smart-toggle-btn" aria-expanded="false" aria-controls="smartDrawer" onclick="toggleDrawer()">Need a prompt?</button>
         </div>
 
-        <div class="mood-bar" role="group" aria-label="Select your current mood">
-            <button class="mood-pill selected" aria-pressed="true" onclick="selectMood(this)">😊 Happy</button>
-            <button class="mood-pill" aria-pressed="false" onclick="selectMood(this)">😌 Calm</button>
-            <button class="mood-pill" aria-pressed="false" onclick="selectMood(this)">🤔 Reflective</button>
-            <button class="mood-pill" aria-pressed="false" onclick="selectMood(this)">🌧️ Stressed</button>
+        <!-- This week as one bar of music: a filled note for each day with an entry, coloured by mood -->
+        <section class="week-bar" aria-labelledby="week-bar-label">
+            <h2 class="week-bar-label" id="week-bar-label">This week</h2>
+            <ol class="week-beats" id="weekBeats"></ol>
+        </section>
+
+        <div class="mood-bar" role="group" aria-label="How are you feeling?">
+            <button class="mood-pill" data-mood="happy" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Happy</button>
+            <button class="mood-pill" data-mood="calm" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Calm</button>
+            <button class="mood-pill" data-mood="reflective" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Reflective</button>
+            <button class="mood-pill" data-mood="stressed" aria-pressed="false" onclick="selectMood(this)"><span class="note" aria-hidden="true"></span>Stressed</button>
         </div>
 
         <div class="tag-container">
             <label for="tagInput" class="sr-only">Add tag</label>
-            <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="+ Add tag (press Enter)" onkeydown="handleTagInput(event)">
+            <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="Add a tag, then Enter" onkeydown="handleTagInput(event)">
             <div id="activeTags" class="active-tags" aria-live="polite"></div>
         </div>
 
         <label for="entryTitle" class="sr-only">Entry Title</label>
-        <input type="text" id="entryTitle" class="entry-title-input" maxlength="120" placeholder="Entry title...">
+        <input type="text" id="entryTitle" class="entry-title-input" maxlength="120" placeholder="Title (optional)">
 
         <label for="editor" class="sr-only">Diary Entry Content</label>
-        <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="Start writing directly on the page..."></textarea>
+        <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="How was today? A few lines is plenty."></textarea>
 
         <div class="editor-footer">
-            <span id="word-count" aria-live="polite">0 words • 0 characters</span>
-            <span id="auto-save-status" aria-live="polite">All changes saved</span>
+            <span id="word-count" aria-live="polite">0 words</span>
+            <span id="auto-save-status" aria-live="polite"></span>
         </div>
 
         <div class="save-bar">
-            <button type="button" class="btn-secondary" onclick="readEntryAloud()" aria-label="Read current entry aloud">🔊 Read Aloud</button>
-            <button type="button" class="save-btn" onclick="saveCurrentEntry()">Save Entry</button>
+            <button type="button" class="btn-secondary" onclick="readEntryAloud()" aria-label="Read current entry aloud">Read aloud</button>
+            <button type="button" class="save-btn" onclick="saveCurrentEntry()">Save entry</button>
         </div>
     </main>
 
-    <!-- Slide-Over Drawer for AI Prompts & Streaks -->
-    <aside class="smart-drawer" id="smartDrawer" aria-label="Smart Assistant Drawer">
+    <!-- Writing prompt drawer. Fixed prompt for now; Lane D's daily_prompt() can fill #dailyPrompt once wired. -->
+    <aside class="smart-drawer" id="smartDrawer" aria-label="Writing prompt">
         <div class="drawer-header">
-            <h3>✨ Smart Assistant</h3>
-            <button class="close-drawer" aria-label="Close Smart Assistant" onclick="toggleDrawer()">&times;</button>
+            <h3>Stuck for words?</h3>
+            <button class="close-drawer" aria-label="Close writing prompt" onclick="toggleDrawer()">&times;</button>
         </div>
 
         <div class="drawer-widget">
-            <h4>Daily Writing Prompt</h4>
-            <p style="font-size: 14px; line-height: 1.5; color: inherit;">
-                "What is one small win from today that you want to remember next month?"
-            </p>
-            <button class="prompt-btn" onclick="usePrompt()">Insert into Page</button>
-        </div>
-
-        <div class="drawer-widget">
-            <h4>Current Streak</h4>
-            <p style="font-size: 22px; font-weight: 700;">4 Days</p>
+            <h4>Today's prompt</h4>
+            <p class="drawer-prompt" id="dailyPrompt">What is one small win from today that you want to remember next month?</p>
+            <button class="prompt-btn" onclick="usePrompt()">Start with this</button>
         </div>
     </aside>
 
@@ -122,8 +122,51 @@
             }, 2500);
         }
 
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
+        // UK date, no year: "Saturday 14 November"
+        document.getElementById('today-date').innerText =
+            new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+        // Draw this week (Mon-Sun) as seven beats. Filled note = an entry that day, coloured by its mood.
+        async function renderWeekBeats() {
+            const list = document.getElementById('weekBeats');
+            let entries = [];
+            try { entries = await loadDiaryEntries(); } catch (error) { entries = []; }
+
+            const today = new Date();
+            const monday = new Date(today);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+            const byDay = {};
+            entries.forEach(entry => {
+                const d = new Date(entry.date);
+                if (isNaN(d)) return;
+                const key = d.toDateString();
+                // newest entry for that day wins (ids are creation timestamps / increasing)
+                if (!byDay[key] || (Number(entry.id) || 0) > (Number(byDay[key].id) || 0)) byDay[key] = entry;
+            });
+
+            list.replaceChildren();
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(monday);
+                day.setDate(monday.getDate() + i);
+                const entry = byDay[day.toDateString()];
+                const li = document.createElement('li');
+                li.className = 'beat' + (day.toDateString() === today.toDateString() ? ' is-today' : '');
+                const key = entry ? moodKey(entry.mood) : '';
+                if (key) li.dataset.mood = key;
+                const name = day.toLocaleDateString('en-GB', { weekday: 'long' });
+                li.setAttribute('aria-label', entry ? `${name}: checked in${key ? ', ' + moodName(entry.mood) : ''}` : `${name}: no entry`);
+                li.innerHTML = '<span class="note-head" aria-hidden="true"></span>';
+                const letter = document.createElement('span');
+                letter.textContent = name.slice(0, 1);
+                letter.setAttribute('aria-hidden', 'true');
+                li.appendChild(letter);
+                if (entry && !key) li.querySelector('.note-head').style.background = 'var(--ink-3)';
+                list.appendChild(li);
+            }
+        }
+        renderWeekBeats();
 
         function setFont(fontType, silent = false) {
             document.body.classList.remove('font-serif', 'font-mono');
@@ -142,7 +185,7 @@
             localStorage.setItem('selected-font', fontType);
             if (!silent) {
                 const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`✍️ Font switched to ${labels[fontType]}`);
+                showToast(`Font switched to ${labels[fontType]}`);
             }
         }
 
@@ -165,7 +208,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         function toggleA11yPanel() {
@@ -189,9 +232,9 @@
                 const text = document.getElementById('editor').value;
                 const content = (title ? title + ". " : "") + (text || "Your entry is currently empty.");
                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(content));
-                showToast('🔊 Reading entry aloud...');
+                showToast('Reading entry aloud...');
             } else {
-                showToast('⚠️ Text-to-speech not supported in this browser');
+                showToast('Text-to-speech not supported in this browser');
             }
         }
 
@@ -201,41 +244,45 @@
             document.querySelector('.smart-toggle-btn').setAttribute('aria-expanded', isOpen);
         }
 
+        // Mood is optional: tap again to clear. The pill itself shows the state, so no toast.
         function selectMood(btn) {
+            const wasSelected = btn.classList.contains('selected');
             document.querySelectorAll('.mood-pill').forEach(b => {
                 b.classList.remove('selected');
                 b.setAttribute('aria-pressed', 'false');
             });
-            btn.classList.add('selected');
-            btn.setAttribute('aria-pressed', 'true');
-            showToast(`Mood set to ${btn.innerText}`);
+            if (!wasSelected) {
+                btn.classList.add('selected');
+                btn.setAttribute('aria-pressed', 'true');
+            }
         }
 
         function usePrompt() {
             const editor = document.getElementById('editor');
-            editor.value += "Prompt: What is one small win from today that I'm proud of?\n";
+            const prompt = document.getElementById('dailyPrompt').innerText.trim();
+            editor.value = (editor.value ? editor.value.trimEnd() + '\n\n' : '') + prompt + '\n';
+            editor.dispatchEvent(new Event('input'));
             editor.focus();
             toggleDrawer();
-            showToast('✨ Daily prompt inserted');
         }
 
         async function saveCurrentEntry() {
             const titleInput = document.getElementById('entryTitle');
             const editorInput = document.getElementById('editor');
-            const title = titleInput.value.trim() || 'Untitled Entry';
+            const title = titleInput.value.trim() || 'Untitled';
             const text = editorInput.value.trim();
 
             if (!text) {
-                showToast('⚠️ Please write something before saving.');
+                showToast('Write a few words first, then save.');
                 return;
             }
             if (title.length > 120 || text.length > 10000) {
-                showToast('⚠️ Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
+                showToast('Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
                 return;
             }
 
             const selectedMoodBtn = document.querySelector('.mood-pill.selected');
-            const mood = selectedMoodBtn ? selectedMoodBtn.innerText : '😊 Happy';
+            const mood = selectedMoodBtn ? selectedMoodBtn.innerText.trim() : '';  // no default: never assume someone is happy
             const tags = Array.from(document.querySelectorAll('#activeTags .tag-badge')).map(el => el.innerText);
 
             const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -252,18 +299,20 @@
             try {
                 await createDiaryEntry(newEntry);
             } catch (error) {
-                showToast(`⚠️ ${error.message}`);
+                showToast(`${error.message}`);
                 return;
             }
 
-            document.getElementById('auto-save-status').innerText = 'Saved just now';
-            showToast(getEntrySessionToken() ? '✓ Entry saved to your account.' : '✓ Entry saved in this browser.');
+            document.getElementById('auto-save-status').innerText = 'Saved';
+            showToast(getEntrySessionToken() ? 'Saved to your account.' : 'Saved on this device. Log in to keep it across devices.');
 
-            // Clear form
+            // Clear form and add today's note to the week bar
             titleInput.value = '';
             editorInput.value = '';
             document.getElementById('activeTags').replaceChildren();
-            document.getElementById('word-count').innerText = '0 words • 0 characters';
+            document.getElementById('word-count').innerText = '0 words';
+            document.querySelectorAll('.mood-pill.selected').forEach(b => selectMood(b));
+            renderWeekBeats();
         }
 
         const editor = document.getElementById('editor');
@@ -273,16 +322,15 @@
         editor.addEventListener('input', () => {
             const text = editor.value.trim();
             const words = text === '' ? 0 : text.split(/\s+/).length;
-            const chars = text.length;
-            wordCountDisplay.innerText = `${words} words • ${chars} characters`;
-            saveStatus.innerText = 'Unsaved changes...';
+            wordCountDisplay.innerText = `${words} ${words === 1 ? 'word' : 'words'}`;
+            saveStatus.innerText = words ? 'Not saved yet' : '';
         });
 
         function handleTagInput(e) {
             if (e.key === 'Enter' && e.target.value.trim() !== '') {
                 e.preventDefault();
                 if (document.querySelectorAll('#activeTags .tag-badge').length >= 20) {
-                    showToast('⚠️ You can add up to 20 tags per entry.');
+                    showToast('You can add up to 20 tags per entry.');
                     e.target.value = '';
                     return;
                 }
@@ -294,7 +342,6 @@
                 span.className = 'tag-badge';
                 tagContainer.appendChild(span);
                 e.target.value = '';
-                showToast(`Added tag #${cleanTag}`);
             }
         }
     </script>

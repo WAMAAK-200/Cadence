@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Insights - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
@@ -21,16 +22,16 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
-            <a href="sign_up.html" class="account-link">✨ Sign Up</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">Display &amp; accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
+            <a href="account.html" class="account-link">Log in</a>
+            <a href="sign_up.html" class="account-link">Sign up</a>
         </div>
     </aside>
 
     <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
         <h3>
-            <span>Style &amp; Accessibility</span>
+            <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
         </h3>
 
@@ -42,50 +43,77 @@
         </div>
 
         <span class="panel-section-label">Accessibility</span>
-        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
-        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
-        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">Larger text</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">High contrast</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">Wider letter spacing</button>
     </div>
 
     <main class="main-content" id="main-content">
         <div class="top-actions">
-            <h1 class="date-heading">Smart Insights</h1>
+            <h1 class="date-heading">Insights</h1>
         </div>
 
+        <!-- Filled from the user's saved entries (no placeholder numbers) -->
         <section class="insight-block" aria-labelledby="mood-heading">
-            <h2 id="mood-heading" style="font-size: 20px; margin-bottom: 16px;">Mood Trends This Week</h2>
-            
-            <div style="display: flex; justify-content: space-between; font-size: 14px;">
-                <span id="happy-label">😊 Happy</span><span>60%</span>
-            </div>
-            <div class="bar-track" role="progressbar" aria-labelledby="happy-label" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
-                <div class="bar-fill" style="width: 60%;"></div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; font-size: 14px;">
-                <span id="calm-label">😌 Calm</span><span>30%</span>
-            </div>
-            <div class="bar-track" role="progressbar" aria-labelledby="calm-label" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">
-                <div class="bar-fill" style="width: 30%;"></div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; font-size: 14px;">
-                <span id="stressed-label">🌧️ Stressed</span><span>10%</span>
-            </div>
-            <div class="bar-track" role="progressbar" aria-labelledby="stressed-label" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
-                <div class="bar-fill" style="width: 10%;"></div>
-            </div>
+            <h2 id="mood-heading" style="margin-bottom: 12px;">Moods this week</h2>
+            <div id="moodRows"></div>
         </section>
 
         <section class="insight-block" aria-labelledby="summary-heading">
-            <h2 id="summary-heading" style="font-size: 20px; margin-bottom: 10px;">Weekly AI Summary</h2>
-            <p style="line-height: 1.7;">
-                You wrote <strong>4 entries</strong> this week. Recurring topics include <strong>web design</strong>, <strong>team collaboration</strong>, and <strong>evening walks</strong>.
-            </p>
+            <h2 id="summary-heading" style="margin-bottom: 10px;">Your week so far</h2>
+            <p class="summary-text" id="weekSummary">Loading your entries...</p>
         </section>
     </main>
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="entry_storage.js"></script>
+    <script>
+        // Count this week's (Mon-Sun) entries per mood and list repeated tags.
+        async function renderInsights() {
+            const rows = document.getElementById('moodRows');
+            const summary = document.getElementById('weekSummary');
+            let entries = [];
+            try { entries = await loadDiaryEntries(); } catch (error) {
+                summary.textContent = 'Could not load your entries. ' + error.message;
+                return;
+            }
+            const now = new Date();
+            const monday = new Date(now);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+            const week = entries.filter(e => { const d = new Date(e.date); return !isNaN(d) && d >= monday; });
+
+            if (!week.length) {
+                rows.innerHTML = '<p class="empty-state">No check-ins yet this week. Each one adds a note to your week.</p>';
+                summary.textContent = 'Once you have a few entries, this shows how your week is shaping up.';
+                return;
+            }
+
+            const counts = { happy: 0, calm: 0, reflective: 0, stressed: 0 };
+            week.forEach(e => { const k = moodKey(e.mood); if (k) counts[k]++; });
+            const max = Math.max(1, ...Object.values(counts));
+            rows.replaceChildren();
+            Object.entries(counts).forEach(([key, n]) => {
+                const row = document.createElement('div');
+                row.className = 'mood-row';
+                row.dataset.mood = key;
+                const name = key[0].toUpperCase() + key.slice(1);
+                row.innerHTML = `<span class="label"><span class="note" aria-hidden="true"></span>${name}</span>
+                    <div class="bar-track" role="img" aria-label="${name}: ${n} of ${week.length} entries"><div class="bar-fill" style="width: ${(n / max) * 100}%"></div></div>
+                    <span class="count">${n}</span>`;
+                rows.appendChild(row);
+            });
+
+            const tagCounts = {};
+            week.forEach(e => new Set(e.tags || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+            const repeated = Object.entries(tagCounts).filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+            let text = `You checked in ${week.length} ${week.length === 1 ? 'time' : 'times'} this week.`;
+            if (repeated.length) text += ` Tags that keep coming up: ${repeated.join(', ')}.`;
+            summary.textContent = text;
+        }
+        renderInsights();
+    </script>
 
     <script>
         function showToast(message) {
@@ -118,7 +146,7 @@
             localStorage.setItem('selected-font', fontType);
             if (!silent) {
                 const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`✍️ Font switched to ${labels[fontType]}`);
+                showToast(`Font switched to ${labels[fontType]}`);
             }
         }
 
@@ -141,7 +169,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         function toggleA11yPanel() {
