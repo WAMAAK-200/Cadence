@@ -78,6 +78,23 @@ def _count(text: str, words) -> int:
     return sum(1 for w in words if _has(text, w))
 
 
+# Negation, incl. dialect ("divvent", "nae"). Allows up to two words between: "not at all stressed".
+_NEG = r"(?:not|no|never|nae|nor|hardly|barely|divvent|dinnet|divn't|isn't|wasn't|aren't|weren't|don't|didn't|haven't|ain't)"
+
+
+def _split_negated(text: str, words):
+    """Count matching words as (plain hits, negated hits): 'stressed' vs 'not stressed'."""
+    plain = negated = 0
+    for w in words:
+        if not _has(text, w):
+            continue
+        if re.search(r"(?<![a-z'])" + _NEG + r"\s+(?:[a-z']+\s+){0,2}" + re.escape(w) + r"(?![a-z])", text):
+            negated += 1
+        else:
+            plain += 1
+    return plain, negated
+
+
 def _to_num(raw: str, half: bool) -> float:
     n = float(raw) if raw[0].isdigit() else float(NUMBER_WORDS[raw])
     return n + 0.5 if half else n
@@ -210,15 +227,24 @@ def extract_checkin(transcript: str, mode: str = "student", crisis: bool = False
     text = transcript.lower().replace("’", "'")
     sleep, study, work = _hours(text)
 
-    up, down = _count(text, MOOD_UP), _count(text, MOOD_DOWN)
-    stress_hits, calm_hits = _count(text, STRESS_WORDS), _count(text, CALM_WORDS)
-    fatigue_hits = _count(text, FATIGUE_WORDS)
+    # A negated word counts for the opposite side: "not stressed" is calm, "not happy" is down.
+    up_p, up_n = _split_negated(text, MOOD_UP)
+    down_p, down_n = _split_negated(text, MOOD_DOWN)
+    up, down = up_p + down_n, down_p + up_n
+    stress_p, stress_n = _split_negated(text, STRESS_WORDS)
+    calm_p, calm_n = _split_negated(text, CALM_WORDS)
+    stress_hits, calm_hits = stress_p + calm_n, calm_p + stress_n
+    fatigue_hits, fatigue_n = _split_negated(text, FATIGUE_WORDS)
 
     mood = None
     if up or down:
-        mood = max(1, min(10, 5 + 2 * (up - down) + _intensity(text, MOOD_UP) - _intensity(text, MOOD_DOWN)))
-    stress = _score(stress_hits, _intensity(text, STRESS_WORDS)) if stress_hits else (_score(calm_hits, 1, -1) if calm_hits else None)
-    fatigue = _score(fatigue_hits, _intensity(text, FATIGUE_WORDS))
+        intensity = (_intensity(text, MOOD_UP) if up_p else 0) - (_intensity(text, MOOD_DOWN) if down_p else 0)
+        mood = max(1, min(10, 5 + 2 * (up - down) + intensity))
+    stress = _score(stress_hits, _intensity(text, STRESS_WORDS) if stress_p else 0) if stress_hits else (_score(calm_hits, 1, -1) if calm_hits else None)
+    fatigue = _score(fatigue_hits, _intensity(text, FATIGUE_WORDS)) if fatigue_hits else (3 if fatigue_n else None)
+    # "ok", "fine", "meh" with nothing stronger: a middling day.
+    if mood is None and _count(text, ["ok", "okay", "fine", "alright", "meh", "not bad", "so-so"]):
+        mood = 5
     # Very short sleep with no mood words: a tired day, not a neutral one.
     if mood is None and sleep is not None and sleep < 5 and (fatigue or stress):
         mood = 4
@@ -238,6 +264,7 @@ def extract_checkin(transcript: str, mode: str = "student", crisis: bool = False
         safety = SafetyFlag(level="crisis", reason="crisis keywords detected")
     elif concern:
         safety = SafetyFlag(level="concern", reason="mentions feeling unable to cope")
+        mood = min(mood, 2) if mood is not None else 2
     else:
         safety = SafetyFlag(level="none", reason=None)
 
@@ -258,6 +285,8 @@ def extract_checkin(transcript: str, mode: str = "student", crisis: bool = False
         feelings.append("in a good mood")
     if mood and mood <= 3:
         feelings.append("low")
+    if stress and stress <= 3:
+        feelings.append("calm")
     if feelings:
         parts.append("felt " + " and ".join(feelings))
     if _has(text, "lie-in"):
