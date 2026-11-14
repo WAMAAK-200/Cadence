@@ -6,10 +6,15 @@
     weekly_summary(WeeklySummaryRequest) -> WeeklySummaryResponse (call 4, Insights page)
     daily_prompt(DailyPromptRequest)   -> DailyPromptResponse (call 5, Smart Assistant; never raises)
 
-Every function raises AiError on any API or parsing failure, so the server
-(Lane E) can catch one exception type and fall back to cached demo data.
+Two modes (see ai_mode()):
+  - "claude": calls the Claude API. Needs ANTHROPIC_API_KEY.
+  - "offline": rule-based engine in offline.py, same outputs, no key, no cost.
+With no key the app runs offline automatically. In claude mode, any failed call
+falls back to the offline engine, so the demo never breaks. The only AiError
+left is an empty transcript.
 
-Env (.env): ANTHROPIC_API_KEY, optional CLAUDE_MODEL (default claude-opus-5-5).
+Env (.env): ANTHROPIC_API_KEY, optional CLAUDE_MODEL (default claude-opus-5-5),
+optional AI_MODE = auto (default) | claude | offline.
 Privacy: we never log diary text, only call name, token counts and timings.
 """
 
@@ -25,13 +30,15 @@ import os
 import anthropic
 from dotenv import load_dotenv
 
-try:  # works both as `ai_backend.claude_client` and when run from inside ai_backend/
+try:  # works both as `ai_backend.core` and when run from inside ai_backend/
+    from . import offline
     from .patterns import calculate_user_patterns
     from .schemas import (
         CheckinExtraction, DailyPromptRequest, DailyPromptResponse, InsightsRequest, InsightsResponse,
         SafetyFlag, SpokenReplyResponse, WeeklySummaryRequest, WeeklySummaryResponse,
     )
 except ImportError:
+    import offline
     from patterns import calculate_user_patterns
     from schemas import (
         CheckinExtraction, DailyPromptRequest, DailyPromptResponse, InsightsRequest, InsightsResponse,
@@ -63,7 +70,16 @@ EMPTY_WEEK_SUMMARY = "No check-ins yet this week. Even a 10-second one adds a no
 
 
 class AiError(Exception):
-    """Any failure in a Claude call. The server should catch this and use demo data."""
+    """Any failure in a Claude call. Public functions catch it and use the offline engine."""
+
+
+def ai_mode() -> str:
+    """'claude' or 'offline'. The server can send this to the UI to show an "Offline mode" badge."""
+    setting = os.getenv("AI_MODE", "auto").lower()
+    if setting == "offline":
+        return "offline"
+    has_key = bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN"))
+    return "claude" if has_key else "offline"
 
 
 # ---------- Prompt loading ----------
@@ -172,7 +188,22 @@ def _log_usage(call: str, ms: int, ok: bool, response=None) -> None:
     }))
 
 
-def _call(call: str, system: str, user_text: str, model_cls, effort: str, max_tokens: int = 8000):
+def _call(call: str, system: str, user_text: str, model_cls, effort: str, fallback=None):
+    """Run a call in the current mode. `fallback` is a no-argument function that returns the
+    offline answer; it is used in offline mode and whenever the Claude call fails."""
+    if ai_mode() == "offline" and fallback is not None:
+        print(json.dumps({"ai_call": call, "mode": "offline"}))
+        return fallback()
+    try:
+        return _claude_call(call, system, user_text, model_cls, effort)
+    except AiError:
+        if fallback is None:
+            raise
+        print(json.dumps({"ai_call": call, "mode": "offline-fallback"}))
+        return fallback()
+
+
+def _claude_call(call: str, system: str, user_text: str, model_cls, effort: str, max_tokens: int = 8000):
     started = time.monotonic()
     ms = lambda: int((time.monotonic() - started) * 1000)
     kwargs = dict(
@@ -243,7 +274,10 @@ def extract_checkin(transcript: str, mode: str = "student", today: str | None = 
         .replace("{{GLOSSARY}}", build_glossary())
     )
     try:
-        result = clamp_extraction(_call("checkin", system, transcript, CheckinExtraction, effort="low"))
+        result = clamp_extraction(_call(
+            "checkin", system, transcript, CheckinExtraction, effort="low",
+            fallback=lambda: offline.extract_checkin(transcript, mode, crisis=keyword_hit),
+        ))
     except AiError:
         if not keyword_hit:
             raise
@@ -263,7 +297,8 @@ def extract_checkin(transcript: str, mode: str = "student", today: str | None = 
 def explain_insights(request: InsightsRequest) -> InsightsResponse:
     """Call 2: calculated patterns -> plain-English insights and advice."""
     system = load_system_prompt("insights-explain").replace("{{MODE}}", request.mode)
-    result = _call("insights", system, request.model_dump_json(), InsightsResponse, effort="medium")
+    result = _call("insights", system, request.model_dump_json(), InsightsResponse, effort="medium",
+                   fallback=lambda: offline.explain_insights(request))
     # Drop any insight that doesn't point at a pattern we actually calculated (no invented findings).
     known = {p.id for p in request.patterns}
     result.insights = [i for i in result.insights if i.patternId in known][:3]
@@ -285,7 +320,8 @@ def spoken_reply(entry: CheckinExtraction) -> SpokenReplyResponse:
     """Call 3: one short warm reply. Crisis entries get the fixed message, no AI call."""
     if entry.safety.level == "crisis":
         return SpokenReplyResponse(text=CRISIS_MESSAGE)
-    return _call("reply", load_system_prompt("spoken-reply"), entry.model_dump_json(), SpokenReplyResponse, effort="low")
+    return _call("reply", load_system_prompt("spoken-reply"), entry.model_dump_json(), SpokenReplyResponse, effort="low",
+                 fallback=lambda: offline.spoken_reply(entry))
 
 
 def weekly_summary(request: WeeklySummaryRequest) -> WeeklySummaryResponse:
@@ -298,7 +334,8 @@ def weekly_summary(request: WeeklySummaryRequest) -> WeeklySummaryResponse:
         .replace("{{MODE}}", request.mode)
         .replace("{{ENTRY_COUNT}}", str(len(request.entries)))  # counted in code, not by the AI
     )
-    result = _call("weekly", system, request.model_dump_json(), WeeklySummaryResponse, effort="low")
+    result = _call("weekly", system, request.model_dump_json(), WeeklySummaryResponse, effort="low",
+                   fallback=lambda: offline.weekly_summary(request, HELPLINE_LINE))
     result.recurringTopics = [t.lower() for t in result.recurringTopics][:3]
     # A hard week always ends with the helpline, even if the model forgot it.
     if any(e.safetyLevel != "none" for e in request.entries) and "116 123" not in result.summary:
@@ -318,14 +355,13 @@ def daily_prompt(request: DailyPromptRequest, today: str | None = None) -> Daily
         .replace("{{MODE}}", request.mode)
         .replace("{{TODAY}}", today or date.today().isoformat())
     )
-    try:
-        return _call("prompt", system, request.model_dump_json(), DailyPromptResponse, effort="low")
-    except AiError:
-        return DailyPromptResponse(prompt=DEFAULT_DAILY_PROMPT)
+    return _call("prompt", system, request.model_dump_json(), DailyPromptResponse, effort="low",
+                 fallback=lambda: offline.daily_prompt(request, DEFAULT_DAILY_PROMPT))
 
 
 if __name__ == "__main__":
-    # Quick live check: python ai_backend/core.py  (needs ANTHROPIC_API_KEY in .env)
+    # Quick check: python ai_backend/core.py  (offline with no key; uses Claude if ANTHROPIC_API_KEY is set)
+    print("AI mode:", ai_mode())
     samples = [
         "Proper knackered, only got about four hours, then sat in the library for five. Canny stressed about the stats exam Tuesday.",
         "Aye it was a canny day, had a lie-in, went to the coast with me marras.",
