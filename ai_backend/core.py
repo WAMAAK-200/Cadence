@@ -215,6 +215,21 @@ def _call(call: str, system: str, user_text: str, model_cls, effort: str, max_to
 
 # ---------- Public functions ----------
 
+def transcribe_audio(audio_file) -> str:
+    """Transcribe audio for review before passing the confirmed text to extract_checkin."""
+    try:
+        from .transcription import transcribe_audio as transcribe
+    except ImportError:
+        from transcription import transcribe_audio as transcribe
+    return transcribe(audio_file)
+
+
+def process_recording(audio_file, mode: str = "student", today: str | None = None):
+    """Transcribe and process audio immediately; inspect entry.safety before storage."""
+    entry = extract_checkin(transcribe_audio(audio_file), mode=mode, today=today)
+    return entry, spoken_reply(entry)
+
+
 def extract_checkin(transcript: str, mode: str = "student", today: str | None = None) -> CheckinExtraction:
     """Call 1: transcript -> structured entry. Always check result.safety.level before anything else."""
     if not transcript or not transcript.strip():
