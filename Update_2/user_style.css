@@ -494,6 +494,24 @@ body {
     background: white;
 }
 
+.form-box .field-error {
+    display: block;
+    color: #c62828;
+    font-size: 12px;
+    line-height: 1.4;
+    margin: -14px 0 14px;
+}
+
+.account-switch {
+    margin-top: 18px;
+    font-size: 14px;
+}
+
+.account-switch a {
+    color: inherit;
+    font-weight: 600;
+}
+
 /* --- DARK MODE OVERRIDES --- */
 body.dark-mode {
     background-color: #141414;
