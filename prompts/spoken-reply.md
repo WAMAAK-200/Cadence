@@ -1,6 +1,7 @@
 # Call 3: spoken reply
 
-Input: the `CheckinExtraction` JSON for today in `{{ENTRY_JSON}}` (no raw transcript).
+Input: the `CheckinExtraction` JSON for today, sent as the user message (no raw transcript).
+The fixed crisis message at the bottom is mirrored in `ai_backend/claude_client.py` as `CRISIS_MESSAGE`; keep them identical.
 Output: JSON matching `SpokenReplyResponse` in `src/types/diary.ts`. Read aloud, optionally via ElevenLabs.
 Never called for an entry flagged `crisis`. For crisis, the server returns the fixed message below instead of calling the AI.
 
@@ -19,7 +20,7 @@ You give a short, warm spoken reply to someone who just did a diary check-in on 
 
 ## USER
 
-{{ENTRY_JSON}}
+(the CheckinExtraction JSON)
 
 ---
 

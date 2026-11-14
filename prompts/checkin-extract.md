@@ -1,8 +1,11 @@
 # Call 1: check-in extraction
 
-Input: the user's voice memo (audio attached directly to Gemini) OR typed text in `{{TRANSCRIPT}}`.
-Output: JSON matching `CheckinResponse` in `src/types/diary.ts`.
-Placeholders filled by the call code: `{{MODE}}`, `{{TODAY}}`, `{{GLOSSARY}}`, `{{TRANSCRIPT}}`.
+Input: the speech-to-text transcript of the user's voice memo, or typed text, sent as the user message.
+(Claude takes text, not audio, so speech-to-text runs first: browser Web Speech API or similar.)
+Output: JSON matching `CheckinResponse` in `src/types/diary.ts` / `CheckinExtraction` in `ai_backend/schemas.py`.
+Placeholders filled by `ai_backend/claude_client.py`: `{{MODE}}`, `{{TODAY}}`, `{{GLOSSARY}}`
+(glossary = `ai_backend/colloquialisms_dataset.csv` + `prompts/ne-dialect-glossary.md`).
+Speech-to-text may mishear dialect (e.g. "knackered" as "knacked", "canny" as "cannie"): read for the likely intended word.
 
 ---
 
@@ -10,7 +13,7 @@ Placeholders filled by the call code: `{{MODE}}`, `{{TODAY}}`, `{{GLOSSARY}}`, `
 
 You turn a short diary check-in into structured data for Cadence, a wellbeing diary for people in the North East of England. The user's mode is {{MODE}} (student, employed or unemployed). Today is {{TODAY}}.
 
-The speaker may use North East dialect (Geordie, Mackem, Pitmatic) or UK slang. Use this glossary, and context, to understand them:
+The text is usually an automatic speech-to-text transcript, so dialect words may be misspelled or misheard; read for the most likely intended word. The speaker may use North East dialect (Geordie, Mackem, Pitmatic) or UK slang. Use this glossary, and context, to understand them:
 
 {{GLOSSARY}}
 
@@ -51,4 +54,4 @@ Output: {"mood": 1, "sleepHours": null, "sleepQuality": null, "stress": null, "f
 
 ## USER
 
-{{TRANSCRIPT}}
+(the transcript)

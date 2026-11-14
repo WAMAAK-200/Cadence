@@ -1,6 +1,7 @@
 # Call 2: insight explanation
 
-Input: `InsightsRequest` (patterns already calculated in code by `src/insights/`) as JSON in `{{REQUEST_JSON}}`.
+Input: `InsightsRequest` (patterns already calculated in code) as JSON, sent as the user message.
+Placeholder filled by `ai_backend/claude_client.py`: `{{MODE}}`.
 Output: JSON matching `InsightsResponse` in `src/types/diary.ts`.
 Never called for an entry flagged `crisis` (the server routes to human help instead).
 
@@ -38,4 +39,4 @@ You explain patterns in a person's own diary data in plain, warm English for Cad
 
 ## USER
 
-{{REQUEST_JSON}}
+(the InsightsRequest JSON)
