@@ -3,7 +3,7 @@
 Shown on the Insights page as "Weekly AI Summary".
 Input: `WeeklySummaryRequest` JSON as the user message (entry summaries and numbers only, never raw diary text).
 Output: JSON matching `WeeklySummaryResponse` in `src/types/diary.ts` / `ai_backend/schemas.py`.
-Placeholders filled by `ai_backend/claude_client.py`: `{{MODE}}`, `{{ENTRY_COUNT}}`.
+Placeholders filled by `../ai_backend/core.py`: `{{MODE}}`, `{{ENTRY_COUNT}}`.
 If there are no entries, the code returns a fixed message without calling the AI.
 
 ---

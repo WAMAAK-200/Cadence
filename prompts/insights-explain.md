@@ -1,7 +1,7 @@
 # Call 2: insight explanation
 
 Input: `InsightsRequest` (patterns already calculated in code) as JSON, sent as the user message.
-Placeholder filled by `ai_backend/claude_client.py`: `{{MODE}}`.
+Placeholder filled by `../ai_backend/core.py`: `{{MODE}}`.
 Output: JSON matching `InsightsResponse` in `src/types/diary.ts`.
 Never called for an entry flagged `crisis` (the server routes to human help instead).
 

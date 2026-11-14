@@ -3,7 +3,7 @@
 Input: the speech-to-text transcript of the user's voice memo, or typed text, sent as the user message.
 (Claude takes text, not audio, so speech-to-text runs first: browser Web Speech API or similar.)
 Output: JSON matching `CheckinResponse` in `src/types/diary.ts` / `CheckinExtraction` in `ai_backend/schemas.py`.
-Placeholders filled by `ai_backend/claude_client.py`: `{{MODE}}`, `{{TODAY}}`, `{{GLOSSARY}}`
+Placeholders filled by `../ai_backend/core.py`: `{{MODE}}`, `{{TODAY}}`, `{{GLOSSARY}}`
 (glossary = `ai_backend/colloquialisms_dataset.csv` + `prompts/ne-dialect-glossary.md`).
 Speech-to-text may mishear dialect (e.g. "knackered" as "knacked", "canny" as "cannie"): read for the likely intended word.
 

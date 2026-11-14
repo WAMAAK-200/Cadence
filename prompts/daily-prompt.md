@@ -3,7 +3,7 @@
 Shown in the "Smart Assistant" drawer on the Today page ("Daily Writing Prompt", with "Insert into Page").
 Input: `DailyPromptRequest` JSON as the user message (last 3 entry summaries and numbers, exam info).
 Output: JSON matching `DailyPromptResponse` in `src/types/diary.ts` / `ai_backend/schemas.py`.
-Placeholders filled by `ai_backend/claude_client.py`: `{{MODE}}`, `{{TODAY}}`.
+Placeholders filled by `../ai_backend/core.py`: `{{MODE}}`, `{{TODAY}}`.
 If the latest entry is flagged "crisis", the code returns a fixed gentle prompt without calling the AI.
 
 ---
