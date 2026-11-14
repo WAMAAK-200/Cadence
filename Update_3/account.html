@@ -53,12 +53,14 @@
         </div>
         <p style="margin-bottom: 24px;">Sign in to sync your entries across devices.</p>
 
-        <form class="form-box" onsubmit="event.preventDefault(); showToast('🔐 Ready for backend authentication API!');">
-            <label for="login-email" style="font-size: 14px; font-weight: 600;">Email</label>
-            <input type="email" id="login-email" required autocomplete="email" placeholder="you@example.com">
+        <form class="form-box" id="login-form">
+            <label for="login-username" style="font-size: 14px; font-weight: 600;">Username</label>
+            <input type="text" id="login-username" required minlength="3" maxlength="32" autocomplete="username" placeholder="Your username" aria-describedby="login-username-error">
+            <small class="field-error" id="login-username-error" aria-live="polite"></small>
 
             <label for="login-password" style="font-size: 14px; font-weight: 600;">Password</label>
-            <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••">
+            <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••" aria-describedby="login-password-error">
+            <small class="field-error" id="login-password-error" aria-live="polite"></small>
 
             <button type="submit" class="save-btn" style="width: 100%;">Log In</button>
         </form>
@@ -80,6 +82,41 @@
                 setTimeout(() => toast.remove(), 250);
             }, 2500);
         }
+
+        const loginForm = document.getElementById('login-form');
+        const loginUsername = document.getElementById('login-username');
+        const loginPassword = document.getElementById('login-password');
+        const usernamePattern = /^[A-Za-z0-9_]{3,32}$/;
+        const passwordPattern = password => password.length > 8
+            && /[A-Z]/.test(password)
+            && /[a-z]/.test(password)
+            && /[0-9]/.test(password)
+            && Array.from(password).some(char => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".includes(char));
+
+        loginForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const usernameValid = usernamePattern.test(loginUsername.value);
+            const passwordValid = passwordPattern(loginPassword.value);
+            document.getElementById('login-username-error').textContent = usernameValid ? '' : 'Use 3–32 characters: letters, numbers, or underscores.';
+            document.getElementById('login-password-error').textContent = passwordValid ? '' : 'Use more than 8 characters with uppercase, lowercase, a number, and punctuation.';
+            if (!usernameValid || !passwordValid) return;
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/login-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: loginUsername.value, password: loginPassword.value })
+                });
+                if (!response.ok) throw new Error('The account server returned an error.');
+                const result = await response.json();
+                showToast(result.message);
+            } catch (error) {
+                showToast('Could not reach the account server. Start it with: python security.py');
+            }
+        });
+
+        loginUsername.addEventListener('input', () => document.getElementById('login-username-error').textContent = '');
+        loginPassword.addEventListener('input', () => document.getElementById('login-password-error').textContent = '');
 
         function setFont(fontType, silent = false) {
             document.body.classList.remove('font-serif', 'font-mono');

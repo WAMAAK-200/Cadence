@@ -59,7 +59,7 @@ class AccountHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        if self.path not in ("/validate-account", "/signup-account"):
+        if self.path not in ("/validate-account", "/signup-account", "/login-account"):
             self.send_error(404)
             return
 
@@ -75,7 +75,12 @@ class AccountHandler(BaseHTTPRequestHandler):
 
         username = data.get("username") if isinstance(data, dict) else None
         password = data.get("password") if isinstance(data, dict) else None
-        valid = username_format_check(username) and password_format_check(password)
+        username_valid = isinstance(username, str) and username_format_check(username)
+        password_valid = password_format_check(password)
+        valid = username_valid and password_valid
+        created = False
+        authenticated = False
+
         if self.path == "/signup-account" and valid:
             try:
                 from account_store import AccountStore
@@ -85,12 +90,21 @@ class AccountHandler(BaseHTTPRequestHandler):
                 created = True
             except ValueError as error:
                 message = str(error)
-                created = False
+        elif self.path == "/login-account":
+            from account_store import AccountStore
+
+            authenticated = AccountStore().verify_account(username, password)
+            message = "Login successful." if authenticated else "Username or password is incorrect."
+        elif not valid:
+            message = "Use a 3–32 character username (letters, numbers, underscores) and a password longer than 8 characters with uppercase, lowercase, a number, and punctuation."
         else:
-            created = False
-            message = "Username and password format are valid." if valid else \
-                "Use a 3–32 character username (letters, numbers, underscores) and a password longer than 8 characters with uppercase, lowercase, a number, and punctuation."
-        body = json.dumps({"valid": valid, "created": created, "message": message}).encode("utf-8")
+            message = "Username and password formats are valid."
+        body = json.dumps({
+            "valid": valid,
+            "created": created,
+            "authenticated": authenticated,
+            "message": message,
+        }).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

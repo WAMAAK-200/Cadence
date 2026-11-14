@@ -627,6 +627,14 @@ body.font-mono button {
     background: white;
 }
 
+.form-box .field-error {
+    display: block;
+    color: #c62828;
+    font-size: 12px;
+    line-height: 1.4;
+    margin: -14px 0 14px;
+}
+
 /* --- FLOATING TOAST NOTIFICATIONS --- */
 .toast-container {
     position: fixed;
