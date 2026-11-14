@@ -64,9 +64,7 @@ class AccountHandler(BaseHTTPRequestHandler):
             if account_id is None:
                 self._send_json(401, {"message": "Please log in again."})
                 return
-            from account_store import AccountStore
-
-            self._send_json(200, {"entries": AccountStore().list_entries(account_id)})
+            self._send_json(200, {"entries": self.server.account_store.list_entries(account_id)})
             return
 
         files = {
@@ -110,6 +108,24 @@ class AccountHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"message": "Logged out."})
             return
 
+        if self.path == "/entries/import":
+            account_id = self._authenticated_account_id()
+            if account_id is None:
+                self._send_json(401, {"message": "Please log in again."})
+                return
+            try:
+                data = self._read_json(6 * 1024 * 1024)
+                entries = data.get("entries") if isinstance(data, dict) else None
+                imported = self.server.account_store.import_entries(account_id, entries)
+            except OverflowError:
+                self._send_json(413, {"message": "Guest entries are too large to import in one request."})
+                return
+            except (ValueError, json.JSONDecodeError) as error:
+                self._send_json(400, {"message": str(error) or "Invalid guest entry data."})
+                return
+            self._send_json(200, {"imported": imported})
+            return
+
         if self.path == "/entries":
             account_id = self._authenticated_account_id()
             if account_id is None:
@@ -117,9 +133,7 @@ class AccountHandler(BaseHTTPRequestHandler):
                 return
             try:
                 data = self._read_json(50000)
-                from account_store import AccountStore
-
-                entry = AccountStore().create_entry(account_id, data)
+                entry = self.server.account_store.create_entry(account_id, data)
             except OverflowError:
                 self._send_json(413, {"message": "Entry is too large."})
                 return
@@ -152,17 +166,13 @@ class AccountHandler(BaseHTTPRequestHandler):
 
         if self.path == "/signup-account" and valid:
             try:
-                from account_store import AccountStore
-
-                AccountStore().create_account(username, password)
+                self.server.account_store.create_account(username, password)
                 message = "Account created successfully. You can now log in."
                 created = True
             except ValueError as error:
                 message = str(error)
         elif self.path == "/login-account":
-            from account_store import AccountStore
-
-            account_id = AccountStore().authenticated_account_id(username, password) if valid else None
+            account_id = self.server.account_store.authenticated_account_id(username, password) if valid else None
             authenticated = account_id is not None
             session_token = None
             if authenticated:
@@ -194,9 +204,9 @@ class AccountHandler(BaseHTTPRequestHandler):
         try:
             entry_id = int(self.path.removeprefix("/entries/"))
             data = self._read_json(50000)
-            from account_store import AccountStore
-
-            updated = AccountStore().update_entry(account_id, entry_id, data.get("title"), data.get("text"))
+            updated = self.server.account_store.update_entry(
+                account_id, entry_id, data.get("title"), data.get("text")
+            )
         except OverflowError:
             self._send_json(413, {"message": "Entry is too large."})
             return
@@ -221,21 +231,46 @@ class AccountHandler(BaseHTTPRequestHandler):
         except ValueError:
             self._send_json(400, {"message": "Invalid entry id."})
             return
-        from account_store import AccountStore
-
-        deleted = AccountStore().delete_entry(account_id, entry_id)
+        deleted = self.server.account_store.delete_entry(account_id, entry_id)
         if not deleted:
             self._send_json(404, {"message": "Entry not found."})
             return
         self._send_json(200, {"message": "Entry deleted."})
 
 
-if __name__ == "__main__":
-    try:
-        server = HTTPServer(("127.0.0.1", 8000), AccountHandler)
-    except OSError as error:
-        raise RuntimeError("Port 8000 is unavailable; stop the process using it before starting Smart Diary.") from error
+def create_server(host="127.0.0.1", port=8000, database_path=None):
+    """Create the HTTP server and initialize its shared account database."""
+    from account_store import AccountStore
 
-    print("Smart Diary account and entry server listening at http://127.0.0.1:8000")
-    server.serve_forever()
+    try:
+        server = HTTPServer((host, port), AccountHandler)
+    except OSError as error:
+        if port == 8000:
+            raise RuntimeError(
+                "Port 8000 is unavailable; stop the process using it before starting Smart Diary."
+            ) from error
+        raise
+
+    try:
+        server.account_store = AccountStore(database_path) if database_path else AccountStore()
+    except Exception:
+        server.server_close()
+        raise
+    return server
+
+
+def main():
+    """Initialize the backend and run the Smart Diary web server."""
+    server = create_server()
+    print(f"Smart Diary account and entry server listening at http://{server.server_address[0]}:{server.server_address[1]}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nSmart Diary server stopped.")
+    finally:
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()
 

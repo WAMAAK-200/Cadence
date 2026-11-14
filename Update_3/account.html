@@ -61,8 +61,7 @@
             <small class="field-error" id="login-username-error" aria-live="polite"></small>
 
             <label for="login-password" style="font-size: 14px; font-weight: 600;">Password</label>
-            <input type="password" id="login-password" required maxlength="72" autocomplete="current-password" placeholder="••••••••" aria-describedby="login-password-error">
-            <small class="field-error" id="login-password-error" aria-live="polite"></small>
+            <input type="password" id="login-password" required maxlength="72" autocomplete="current-password" placeholder="••••••••">
 
             <button type="submit" class="save-btn" style="width: 100%;">Log In</button>
         </form>
@@ -71,6 +70,7 @@
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="entry_storage.js"></script>
     <script>
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -137,7 +137,7 @@
             const usernameValid = usernamePattern.test(loginUsername.value);
             const passwordValid = passwordPattern(loginPassword.value);
             document.getElementById('login-username-error').textContent = usernameValid ? '' : 'Use 3–32 characters: letters, numbers, or underscores.';
-            document.getElementById('login-password-error').textContent = passwordValid ? '' : 'Use more than 8 characters with uppercase, lowercase, a number, and punctuation.';
+            if (!passwordValid) showToast('Password incorrect.');
             if (!usernameValid || !passwordValid) return;
 
             try {
@@ -149,11 +149,27 @@
                 if (!response.ok) throw new Error('The account server returned an error.');
                 const result = await response.json();
                 if (result.authenticated && result.session_token) {
-                    sessionStorage.setItem(sessionKey, result.session_token);
-                    sessionStorage.removeItem(expiredSessionKey);
-                    window.location.href = 'user_interface.html';
+                    try {
+                        const guestEntries = readGuestEntriesForMigration();
+                        await importGuestEntriesToAccount(result.session_token, guestEntries);
+                        sessionStorage.setItem(sessionKey, result.session_token);
+                        sessionStorage.removeItem(expiredSessionKey);
+                        localStorage.removeItem('diary_entries');
+                        window.location.href = 'user_interface.html';
+                    } catch (error) {
+                        sessionStorage.removeItem(sessionKey);
+                        try {
+                            await fetch('http://127.0.0.1:8000/logout', {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${result.session_token}` }
+                            });
+                        } catch (logoutError) {
+                            // The temporary token expires automatically if the server is unreachable.
+                        }
+                        showToast(error.message || 'Login could not finish; guest entries were kept in the browser.');
+                    }
                 } else {
-                    showToast(result.message);
+                    showToast('Password incorrect.');
                 }
             } catch (error) {
                 showToast('Could not reach the account server. Start it with: python security.py');
@@ -161,7 +177,6 @@
         });
 
         loginUsername.addEventListener('input', () => document.getElementById('login-username-error').textContent = '');
-        loginPassword.addEventListener('input', () => document.getElementById('login-password-error').textContent = '');
 
         function setFont(fontType, silent = false) {
             document.body.classList.remove('font-serif', 'font-mono');

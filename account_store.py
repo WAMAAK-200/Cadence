@@ -7,7 +7,8 @@ from pathlib import Path
 
 import bcrypt
 
-from security import password_format_check, username_format_check
+from input_validation import password_format as password_format_check
+from input_validation import username_format as username_format_check
 
 
 DEFAULT_DATABASE = Path(__file__).with_name("accounts.db")
@@ -38,9 +39,19 @@ class AccountStore:
                     mood TEXT NOT NULL,
                     body TEXT NOT NULL,
                     tags_json TEXT NOT NULL DEFAULT '[]',
+                    source_id TEXT,
                     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
                 )
                 """
+            )
+            entry_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(diary_entries)")
+            }
+            if "source_id" not in entry_columns:
+                connection.execute("ALTER TABLE diary_entries ADD COLUMN source_id TEXT")
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS diary_entries_account_source "
+                "ON diary_entries(account_id, source_id) WHERE source_id IS NOT NULL"
             )
 
     @contextmanager
@@ -145,6 +156,32 @@ class AccountStore:
             )
             entry_id = cursor.lastrowid
         return next(item for item in self.list_entries(account_id) if item["id"] == entry_id)
+
+    def import_entries(self, account_id, entries):
+        """Import browser entries atomically and ignore retries of the same import."""
+        if not isinstance(entries, list) or len(entries) > 10000:
+            raise ValueError("Guest entry data is invalid or too large to import.")
+
+        validated_entries = []
+        for index, entry in enumerate(entries):
+            date, title, mood, body, tags = self._validated_entry(entry)
+            source_value = entry.get("id")
+            if not isinstance(source_value, (str, int)) or len(str(source_value)) > 80:
+                raise ValueError("A guest entry is missing its import id.")
+            source_id = f"{index}:{source_value}"
+            validated_entries.append((date, title, mood, body, json.dumps(tags), source_id))
+
+        imported = 0
+        with self._connect() as connection:
+            for date, title, mood, body, tags_json, source_id in validated_entries:
+                cursor = connection.execute(
+                    "INSERT OR IGNORE INTO diary_entries "
+                    "(account_id, date, title, mood, body, tags_json, source_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (account_id, date, title, mood, body, tags_json, source_id),
+                )
+                imported += cursor.rowcount
+        return imported
 
     def update_entry(self, account_id, entry_id, title, body):
         if not isinstance(title, str) or not title.strip() or len(title) > 120:

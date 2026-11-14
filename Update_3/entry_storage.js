@@ -3,11 +3,6 @@ const ENTRY_SESSION_KEY = 'smartdiary_session_token';
 const ENTRY_EXPIRED_KEY = 'smartdiary_session_expired';
 const ENTRY_LOCAL_KEY = 'diary_entries';
 
-const SAMPLE_DIARY_ENTRIES = [
-    { id: 1, date: 'November 14, 2026', title: 'Frontend Redesign', mood: '😊 Happy', text: 'Today we cleaned up the Smart Diary layout to make it feel much more open and distraction-free.', tags: ['#frontend'] },
-    { id: 2, date: 'November 12, 2026', title: 'Afternoon Walk', mood: '😌 Calm', text: 'Took a break around Durham this afternoon before catching up with the backend team.', tags: ['#walk'] }
-];
-
 function getEntrySessionToken() {
     if (sessionStorage.getItem(ENTRY_EXPIRED_KEY) === 'true') return 'expired';
     return sessionStorage.getItem(ENTRY_SESSION_KEY);
@@ -29,21 +24,55 @@ function normalizeGuestEntry(entry, index) {
 
 function getGuestEntries() {
     const stored = localStorage.getItem(ENTRY_LOCAL_KEY);
-    if (stored === null) {
-        localStorage.setItem(ENTRY_LOCAL_KEY, JSON.stringify(SAMPLE_DIARY_ENTRIES));
-        return SAMPLE_DIARY_ENTRIES.map(entry => ({ ...entry, tags: [...entry.tags] }));
-    }
+    if (stored === null) return [];
     try {
         const parsed = JSON.parse(stored);
-        const entries = Array.isArray(parsed)
-            ? parsed.map(normalizeGuestEntry).filter(Boolean)
-            : [];
-        localStorage.setItem(ENTRY_LOCAL_KEY, JSON.stringify(entries));
-        return entries;
+        if (!Array.isArray(parsed)) throw new Error('Saved guest entries are not a list.');
+        if (parsed.some(entry => !entry || typeof entry !== 'object' || Array.isArray(entry))) {
+            throw new Error('A saved guest entry has an unexpected format.');
+        }
+        return parsed;
     } catch (error) {
-        localStorage.setItem(ENTRY_LOCAL_KEY, '[]');
-        return [];
+        throw new Error('Guest entries could not be read. The browser data has been kept.');
     }
+}
+
+function readGuestEntriesForMigration() {
+    const stored = localStorage.getItem(ENTRY_LOCAL_KEY);
+    if (stored === null) return [];
+    let entries;
+    try {
+        entries = JSON.parse(stored);
+    } catch (error) {
+        throw new Error('Guest entries could not be read, so login was stopped and the browser data was kept.');
+    }
+    if (!Array.isArray(entries)) {
+        throw new Error('Guest entries are in an unexpected format, so login was stopped and the browser data was kept.');
+    }
+    if (entries.some(entry => !entry || typeof entry !== 'object' || Array.isArray(entry))) {
+        throw new Error('A guest entry has an unexpected format, so login was stopped and the browser data was kept.');
+    }
+    return entries;
+}
+
+async function importGuestEntriesToAccount(token, entries) {
+    if (entries.length === 0) return { imported: 0 };
+    let response;
+    try {
+        response = await fetch(`${ENTRY_API_BASE}/entries/import`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ entries })
+        });
+    } catch (error) {
+        throw new Error('Could not reach the diary server; guest entries were kept in the browser.');
+    }
+    const result = await response.json();
+    if (!response.ok) throw new Error(`${result.message || 'Guest entry import failed.'} Guest entries remain in the browser.`);
+    return result;
 }
 
 function saveGuestEntries(entries) {
