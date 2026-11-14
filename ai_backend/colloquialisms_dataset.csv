@@ -1,0 +1,29 @@
+term,region,category,standard_meaning,occupational_clinical_mapping,example_sentence
+knackered,North East / UK General,Fatigue & Energy,"Extremely exhausted, fatigued, or broken",High Fatigue / Rest Required,Me back is proper knackered after sitting at the desk all day.
+canny bad,North East (Geordie/Mackem),Symptom Severity,"Quite bad, severe, or significant",Moderate to High Pain / Elevated Symptom Severity,"I've got a canny bad headache today, can hardly concentrate."
+proper bad,North East / Northern UK,Symptom Severity,Very bad or acute pain,High Pain / High Severity,Me hip is proper bad this morning.
+done in,North East / UK General,Fatigue & Energy,"Exhausted, worn out, or physically spent",High Physical Fatigue / Low Capacity,After that short walk me legs are completely done in.
+out of sorts,UK General,General Wellbeing,"Slightly unwell, feeling off, or low mood",Low Mood / Mild Malaise,"Feeling a bit out of sorts today, just no drive to do anything."
+gutted,UK General,Mental Wellbeing / Mood,"Bitterness, disappointment, or feeling down",Low Mood / Psychological Distress,Felt proper gutted when I couldn't finish the shift.
+head's melted,North East / UK General,Mental Fatigue / Stress,"Overwhelmed, mentally exhausted, or severe brain fog",High Cognitive Stress / Brain Fog,Me head's melted from trying to focus on this assignment.
+down in the dumps,UK General,Mental Wellbeing / Mood,"Feeling depressed, sad, or low mood",Low Mood / Depressive Symptoms,Been feeling down in the dumps all week.
+drained,UK General,Fatigue & Energy,Depleted of physical or mental energy,High Fatigue / Low Capacity,Completely drained after 2 hours of revision.
+swimming head,North East / General UK,Cognitive / Neurological,"Lightheaded, dizzy, or disoriented",Dizziness / Brain Fog,Got a swimming head every time I stand up.
+canny,North East (Geordie/Mackem),General Descriptor,"Good, pleasant, moderate, or reasonable",Moderate Baseline / Positive Wellbeing,"Feeling canny today, energy levels are decent."
+bairn,North East / Scotland,Social / Family Context,Child or baby,Dependents / Caring Responsibilities,"Up all night with the little bairn, so sleep was terrible."
+marra,North East (Pitmatic/Cumbria),Social Support,"Friend, colleague, or workmate",Peer Support / Work Connection,Spoke to me marra about helping me with the shift.
+wor,North East (Geordie),Possessive Pronoun,Our,Personal / Family Reference,Wor lass helped me out with the housework.
+radge,North East,Mental State / Agitation,"Wild, angry, agitated, or chaotic",High Stress / Agitation,Stress levels went completely radge this afternoon.
+haddaway,North East (Geordie),Interjection / Frustration,"Go away, get out of here, or expression of disbelief",Frustration / High Stress Indicator,"Haddaway man, I couldn't believe how bad the pain got."
+biffed,North East,Physical Discomfort,"Bumped, injured, or sore",Mild Injury / Joint Discomfort,Biffed me knee against the coffee table and it's stiff now.
+clarty,North East,Environmental / Physical State,"Dirty, muddy, or uncomfortably damp",Environmental Discomfort / Weather Trigger,"Weather is clarty today, making me joints feel heavy."
+cramming,Student / General UK,Study & Work Habits,Studying intensively right before an exam,High Work Load / Acute Exam Stress,Been cramming for 8 hours straight without a proper break.
+burnout,General UK,Mental & Physical State,"State of emotional, physical, and mental exhaustion",Severe Stress / Capacity Depleted,"Borderline burnout after exam week, can't retain anything."
+skiving,UK General,Work & Attendance,"Avoiding work, school, or duties",Work Absence / Reduced Engagement,"Not skiving, I genuinely couldn't get out of bed with this back pain."
+shattered,UK General,Fatigue & Energy,Extremely tired or exhausted,High Fatigue / Low Capacity,"Shattered today, only got 4 hours of sleep."
+chuffed,UK General,Mental Wellbeing / Mood,Very pleased or delighted,High Mood / Positive Reinforcement,Proper chuffed that I managed to finish my study block.
+stuffy head,UK General,Physical Symptom,"Congested, foggy, or heavy head",Mild Malaise / Brain Fog,Woke up with a stuffy head and low energy.
+knackered out,North East / UK General,Fatigue & Energy,Completely worn down,High Fatigue / Rest Required,Physical exertion left me knackered out for the rest of the day.
+stressed to the nines,UK General,Mental Fatigue / Stress,Extremely stressed or anxious,High Stress / Anxiety Flag,Stressed to the nines about the upcoming assignment deadline.
+heavy legs,UK General,Physical Symptom,Physical tiredness or weakness in limbs,Physical Fatigue / Low Mobility,"Got heavy legs today, struggling with stairs."
+niff,North East / UK General,General Wellbeing,Off-feeling or unpleasant sensation,Mild Malaise,"Feeling a bit niff, stomach's not right."
