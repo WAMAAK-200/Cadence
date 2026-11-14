@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Insights - Smart Diary</title>
+    <link rel="stylesheet" href="user_style.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div>
+            <div class="brand">Smart Diary</div>
+            <ul class="nav-menu">
+                <li><a href="user_interface.html">Today</a></li>
+                <li><a href="entries.html">All Entries</a></li>
+                <li><a href="calendar.html">Calendar</a></li>
+                <li><a href="insights.html" class="active">Insights</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-footer">
+            <a href="account.html" class="account-link">👤 Account / Log In</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading">Smart Insights</h1>
+        </div>
+
+        <div class="insight-block">
+            <h3 style="margin-bottom: 16px;">Mood Trends This Week</h3>
+            
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span>😊 Happy</span><span>60%</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width: 60%;"></div></div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span>😌 Calm</span><span>30%</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width: 30%;"></div></div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span>🌧️ Stressed</span><span>10%</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width: 10%;"></div></div>
+        </div>
+
+        <div class="insight-block">
+            <h3 style="margin-bottom: 10px;">Weekly AI Summary</h3>
+            <p style="color: #5a5e62; line-height: 1.7;">
+                You wrote <strong>4 entries</strong> this week. Recurring topics include <strong>web design</strong>, <strong>team collaboration</strong>, and <strong>evening walks</strong>.
+            </p>
+        </div>
+    </main>
+
+</body>
+</html>

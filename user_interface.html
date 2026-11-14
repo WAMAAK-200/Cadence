@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Today - Smart Diary</title>
+    <link rel="stylesheet" href="user_style.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div>
+            <div class="brand">Smart Diary</div>
+            <ul class="nav-menu">
+                <li><a href="user_interface.html" class="active">Today</a></li>
+                <li><a href="entries.html">All Entries</a></li>
+                <li><a href="calendar.html">Calendar</a></li>
+                <li><a href="insights.html">Insights</a></li>
+            </ul>
+        </div>
+        <div class="sidebar-footer">
+            <a href="account.html" class="account-link">👤 Account / Log In</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading" id="today-date">Saturday, November 14, 2026</h1>
+            <button class="smart-toggle-btn" onclick="toggleDrawer()">✨ Smart Assistant</button>
+        </div>
+
+        <div class="mood-bar">
+            <button class="mood-pill" onclick="selectMood(this)">😊 Happy</button>
+            <button class="mood-pill" onclick="selectMood(this)">😌 Calm</button>
+            <button class="mood-pill" onclick="selectMood(this)">🤔 Reflective</button>
+            <button class="mood-pill" onclick="selectMood(this)">🌧️ Stressed</button>
+        </div>
+
+        <input type="text" class="entry-title-input" placeholder="Entry title...">
+        <textarea id="editor" class="borderless-editor" placeholder="Start writing directly on the page..."></textarea>
+
+        <div class="save-bar">
+            <button class="save-btn">Save Entry</button> <!--Connect to backend API here-->
+        </div>
+    </main>
+
+    <!-- Slide-Over Drawer for AI Prompts & Streaks -->
+    <div class="smart-drawer" id="smartDrawer">
+        <div class="drawer-header">
+            <h3>✨ Smart Assistant</h3>
+            <button class="close-drawer" onclick="toggleDrawer()">&times;</button>
+        </div>
+
+        <div class="drawer-widget">
+            <h4>Daily Writing Prompt</h4>
+            <p style="font-size: 14px; line-height: 1.5; color: #444;">
+                "What is one small win from today that you want to remember next month?"
+            </p>
+            <button class="prompt-btn" onclick="usePrompt()">Insert into Page</button>
+        </div>
+
+        <div class="drawer-widget">
+            <h4>Current Streak</h4>
+            <p style="font-size: 22px; font-weight: 700;">4 Days</p>
+        </div>
+    </div>
+
+    <script>
+        // Automatically display current date
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
+
+        function toggleDrawer() {
+            document.getElementById('smartDrawer').classList.toggle('open');
+        }
+
+        function selectMood(btn) {
+            document.querySelectorAll('.mood-pill').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function usePrompt() {
+            const editor = document.getElementById('editor');
+            editor.value += "Prompt: What is one small win from today that I'm proud of?\n";
+            editor.focus();
+            toggleDrawer();
+        }
+    </script>
+</body>
+</html>

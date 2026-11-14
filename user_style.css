@@ -1,0 +1,364 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #fbfbfa;
+    color: #2f3437;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* 1. Left Sidebar Navigation */
+.sidebar {
+    width: 240px;
+    background-color: #f4f4f2;
+    border-right: 1px solid #e6e6e3;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.brand {
+    font-weight: 700;
+    font-size: 18px;
+    padding: 0 12px 24px 12px;
+    color: #1a1a1a;
+}
+
+.nav-menu {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nav-menu a {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #5a5e62;
+    font-weight: 500;
+    font-size: 15px;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.nav-menu a:hover {
+    background-color: #eaeae7;
+    color: #1a1a1a;
+}
+
+.nav-menu a.active {
+    background-color: #e3e3df;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.sidebar-footer {
+    border-top: 1px solid #e6e6e3;
+    padding-top: 16px;
+}
+
+.account-link {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #2f3437;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.account-link:hover, .account-link.active {
+    background-color: #eaeae7;
+}
+
+/* 2. Main Open Content Area */
+.main-content {
+    margin-left: 240px;
+    flex: 1;
+    padding: 50px 80px;
+    max-width: 950px;
+}
+
+.top-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.date-heading {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.smart-toggle-btn {
+    background-color: #f0f0ed;
+    border: 1px solid #dcdcd7;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    color: #2f3437;
+    transition: background-color 0.2s;
+}
+
+.smart-toggle-btn:hover {
+    background-color: #e4e4df;
+}
+
+/* 3. Borderless Seamless Writing Editor */
+.mood-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.mood-pill {
+    background: transparent;
+    border: 1px solid #e0e0dc;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #5a5e62;
+    cursor: pointer;
+}
+
+.mood-pill:hover, .mood-pill.selected {
+    background-color: #2f3437;
+    color: white;
+    border-color: #2f3437;
+}
+
+.entry-title-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 16px;
+    font-family: inherit;
+}
+
+.entry-title-input:focus {
+    outline: none;
+}
+
+.borderless-editor {
+    width: 100%;
+    min-height: 350px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.7;
+    color: #2f3437;
+    resize: none;
+}
+
+.borderless-editor:focus {
+    outline: none;
+}
+
+.save-bar {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ecece8;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.save-btn {
+    background-color: #1a1a1a;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.save-btn:hover {
+    background-color: #333;
+}
+
+/* 4. Slide-Over Smart Drawer */
+.smart-drawer {
+    position: fixed;
+    top: 0;
+    right: -340px; /* Hidden off-screen by default */
+    width: 320px;
+    height: 100vh;
+    background-color: #ffffff;
+    border-left: 1px solid #e6e6e3;
+    box-shadow: -5px 0 25px rgba(0, 0, 0, 0.05);
+    padding: 28px 24px;
+    transition: right 0.3s ease;
+    z-index: 200;
+}
+
+.smart-drawer.open {
+    right: 0; /* Slides into view */
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #ecece8;
+}
+
+.close-drawer {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.drawer-widget {
+    background-color: #f8f8f6;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.drawer-widget h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.prompt-btn {
+    margin-top: 10px;
+    background-color: #1a1a1a;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+/* Entries Page List */
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #e0e0dc;
+    border-radius: 8px;
+    background: white;
+    font-size: 15px;
+    margin-bottom: 30px;
+}
+
+.entry-row {
+    padding: 20px 0;
+    border-bottom: 1px solid #ecece8;
+}
+
+.entry-row-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+/* Calendar Grid */
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.calendar-controls button {
+    background: #f0f0ed;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.calendar-weekdays, .calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    text-align: center;
+}
+
+.calendar-weekdays div {
+    font-size: 13px;
+    font-weight: 600;
+    color: #777;
+    padding-bottom: 8px;
+}
+
+.day {
+    padding: 18px 0;
+    border: 1px solid #ecece8;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.day:hover {
+    border-color: #1a1a1a;
+}
+
+.today {
+    background-color: #1a1a1a;
+    color: white;
+    border-color: #1a1a1a;
+}
+
+/* Insights & Account Forms */
+.insight-block {
+    padding: 24px 0;
+    border-bottom: 1px solid #ecece8;
+}
+
+.bar-track {
+    background: #ecece8;
+    height: 8px;
+    border-radius: 4px;
+    margin: 6px 0 16px 0;
+}
+
+.bar-fill {
+    background: #1a1a1a;
+    height: 100%;
+    border-radius: 4px;
+}
+
+.form-box {
+    max-width: 400px;
+    margin-top: 20px;
+}
+
+.form-box input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #dcdcd7;
+    border-radius: 6px;
+    margin: 6px 0 18px 0;
+    font-size: 15px;
+}
