@@ -52,6 +52,8 @@
             <h1 class="date-heading">Welcome To Your Smart Diary</h1>
         </div>
         <p style="margin-bottom: 24px;">Sign in to sync your entries across devices.</p>
+        <p id="signed-in-status" hidden></p>
+        <button type="button" id="logout-button" class="save-btn" hidden>Log Out</button>
 
         <form class="form-box" id="login-form">
             <label for="login-username" style="font-size: 14px; font-weight: 600;">Username</label>
@@ -59,12 +61,12 @@
             <small class="field-error" id="login-username-error" aria-live="polite"></small>
 
             <label for="login-password" style="font-size: 14px; font-weight: 600;">Password</label>
-            <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••" aria-describedby="login-password-error">
+            <input type="password" id="login-password" required maxlength="72" autocomplete="current-password" placeholder="••••••••" aria-describedby="login-password-error">
             <small class="field-error" id="login-password-error" aria-live="polite"></small>
 
             <button type="submit" class="save-btn" style="width: 100%;">Log In</button>
         </form>
-        <p class="account-switch">New here? <a href="sign_up.html">Create an account</a></p>
+        <p class="account-switch" id="account-switch">New here? <a href="sign_up.html">Create an account</a></p>
     </main>
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
@@ -88,10 +90,47 @@
         const loginPassword = document.getElementById('login-password');
         const usernamePattern = /^[A-Za-z0-9_]{3,32}$/;
         const passwordPattern = password => password.length > 8
+            && new TextEncoder().encode(password).length <= 72
             && /[A-Z]/.test(password)
             && /[a-z]/.test(password)
             && /[0-9]/.test(password)
             && Array.from(password).some(char => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".includes(char));
+
+        const sessionKey = 'smartdiary_session_token';
+        const expiredSessionKey = 'smartdiary_session_expired';
+        const logoutButton = document.getElementById('logout-button');
+        const signedInStatus = document.getElementById('signed-in-status');
+        function showAccountSession() {
+            const expired = sessionStorage.getItem(expiredSessionKey) === 'true';
+            const signedIn = Boolean(sessionStorage.getItem(sessionKey)) && !expired;
+            loginForm.hidden = signedIn;
+            document.getElementById('account-switch').hidden = signedIn;
+            logoutButton.hidden = !signedIn && !expired;
+            signedInStatus.hidden = !signedIn && !expired;
+            if (signedIn) signedInStatus.textContent = 'You are signed in. Your entries are stored with your account.';
+            if (expired) signedInStatus.textContent = 'Your session expired. Sign in again to access your account entries.';
+        }
+        showAccountSession();
+
+        logoutButton.addEventListener('click', async () => {
+            const token = sessionStorage.getItem(sessionKey);
+            let serverLogoutSucceeded = true;
+            try {
+                await fetch('http://127.0.0.1:8000/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (error) {
+                serverLogoutSucceeded = false;
+            } finally {
+                sessionStorage.removeItem(sessionKey);
+                sessionStorage.removeItem(expiredSessionKey);
+                showAccountSession();
+                showToast(serverLogoutSucceeded
+                    ? 'Logged out. Guest entries remain on this browser.'
+                    : 'Local session cleared. The server was unavailable to revoke it.');
+            }
+        });
 
         loginForm.addEventListener('submit', async event => {
             event.preventDefault();
@@ -109,7 +148,13 @@
                 });
                 if (!response.ok) throw new Error('The account server returned an error.');
                 const result = await response.json();
-                showToast(result.message);
+                if (result.authenticated && result.session_token) {
+                    sessionStorage.setItem(sessionKey, result.session_token);
+                    sessionStorage.removeItem(expiredSessionKey);
+                    window.location.href = 'user_interface.html';
+                } else {
+                    showToast(result.message);
+                }
             } catch (error) {
                 showToast('Could not reach the account server. Start it with: python security.py');
             }

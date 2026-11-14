@@ -83,7 +83,7 @@
 
         <div class="search-bar-row">
             <label for="searchInput" class="sr-only">Search entries</label>
-            <input type="text" id="searchInput" class="search-input" onkeyup="filterEntries()" placeholder="Search entries by keyword or mood...">
+            <input type="text" id="searchInput" class="search-input" maxlength="120" onkeyup="filterEntries()" placeholder="Search entries by keyword or mood...">
             <button class="export-btn" onclick="exportEntries()">📥 Export (.txt)</button>
         </div>
 
@@ -92,6 +92,7 @@
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="entry_storage.js"></script>
     <script>
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -163,18 +164,17 @@
             showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
         }
 
-        function loadEntries() {
-            let entries = JSON.parse(localStorage.getItem('diary_entries'));
-            if (!entries) {
-                entries = [
-                    { id: 1, date: 'November 14, 2026', title: 'Frontend Redesign', mood: '😊 Happy', text: 'Today we cleaned up the Smart Diary layout to make it feel much more open and distraction-free.', tags: ['#frontend'] },
-                    { id: 2, date: 'November 12, 2026', title: 'Afternoon Walk', mood: '😌 Calm', text: 'Took a break around Durham this afternoon before catching up with the backend team.', tags: ['#walk'] }
-                ];
-                localStorage.setItem('diary_entries', JSON.stringify(entries));
+        async function loadEntries() {
+            let entries;
+            try {
+                entries = await loadDiaryEntries();
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+                return;
             }
 
             const listContainer = document.getElementById('entryList');
-            listContainer.innerHTML = '';
+            listContainer.replaceChildren();
 
             if (entries.length === 0) {
                 listContainer.innerHTML = '<p style="color: #777; font-style: italic; margin-top: 20px;">No diary entries yet. Write your first entry on the Today page!</p>';
@@ -186,50 +186,67 @@
                 article.className = 'entry-row';
                 article.tabIndex = 0;
                 article.setAttribute('role', 'button');
-                article.setAttribute('aria-label', `Edit entry: ${entry.date} — ${entry.title}`);
                 article.onclick = () => enableEdit(article);
                 article.onkeydown = (e) => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); enableEdit(article); } };
 
                 article.innerHTML = `
                     <div class="entry-display">
                         <div class="entry-row-header">
-                            <h2 class="display-title" style="font-size: 18px;">${entry.date} — ${entry.title}</h2>
-                            <span>${entry.mood}</span>
+                            <h2 class="display-title" style="font-size: 18px;"></h2>
+                            <span class="display-mood"></span>
                         </div>
-                        <p class="display-text" style="color: inherit; line-height: 1.6;">${entry.text}</p>
-                        <div style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
-                            ${(entry.tags || []).map(t => `<span class="tag-badge">${t}</span>`).join('')}
-                        </div>
+                        <p class="display-text" style="color: inherit; line-height: 1.6;"></p>
+                        <div class="entry-tags" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
                         <div class="entry-card-actions">
-                            <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="readSpecificEntry(this, event)">🔊 Listen</button>
-                            <button type="button" class="btn-delete" aria-label="Delete entry ${entry.title}" onclick="deleteEntry(${entry.id}, event)">🗑️ Delete</button>
+                            <button type="button" class="btn-secondary listen-entry" style="font-size: 12px; padding: 6px 12px;">🔊 Listen</button>
+                            <button type="button" class="btn-delete">🗑️ Delete</button>
                         </div>
                     </div>
 
                     <div class="entry-edit-form" onclick="event.stopPropagation()">
                         <label class="sr-only">Edit Title</label>
-                        <input type="text" class="edit-input" value="${entry.title}">
+                        <input type="text" class="edit-input" maxlength="120">
                         <label class="sr-only">Edit Content</label>
-                        <textarea class="edit-textarea">${entry.text}</textarea>
+                        <textarea class="edit-textarea" maxlength="10000"></textarea>
                         <div class="edit-actions">
-                            <button type="button" class="btn-secondary" onclick="cancelEdit(this, event)">Cancel</button>
-                            <button type="button" class="save-btn" onclick="saveEdit(this, ${entry.id}, event)">Save Changes</button>
+                            <button type="button" class="btn-secondary cancel-edit">Cancel</button>
+                            <button type="button" class="save-btn save-edit">Save Changes</button>
                         </div>
                     </div>
                 `;
+                article.setAttribute('aria-label', `Edit entry: ${entry.date} — ${entry.title}`);
+                article.querySelector('.display-title').textContent = `${entry.date} — ${entry.title}`;
+                article.querySelector('.display-mood').textContent = entry.mood || '';
+                article.querySelector('.display-text').textContent = entry.text || '';
+                article.querySelector('.edit-input').value = entry.title || '';
+                article.querySelector('.edit-textarea').value = entry.text || '';
+                (Array.isArray(entry.tags) ? entry.tags : []).forEach(tag => {
+                    const badge = document.createElement('span');
+                    badge.className = 'tag-badge';
+                    badge.textContent = tag;
+                    article.querySelector('.entry-tags').appendChild(badge);
+                });
+                article.querySelector('.listen-entry').addEventListener('click', event => readSpecificEntry(event.currentTarget, event));
+                const deleteButton = article.querySelector('.btn-delete');
+                deleteButton.setAttribute('aria-label', `Delete entry ${entry.title || ''}`);
+                deleteButton.addEventListener('click', event => deleteEntry(entry.id, event));
+                article.querySelector('.cancel-edit').addEventListener('click', event => cancelEdit(event.currentTarget, event));
+                article.querySelector('.save-edit').addEventListener('click', event => saveEdit(event.currentTarget, entry.id, event));
                 listContainer.appendChild(article);
             });
         }
 
         window.addEventListener('DOMContentLoaded', loadEntries);
 
-        function deleteEntry(entryId, event) {
+        async function deleteEntry(entryId, event) {
             event.stopPropagation();
-            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
-            entries = entries.filter(ent => ent.id !== entryId);
-            localStorage.setItem('diary_entries', JSON.stringify(entries));
-            loadEntries();
-            showToast('🗑️ Entry deleted');
+            try {
+                await deleteDiaryEntry(entryId);
+                await loadEntries();
+                showToast('🗑️ Entry deleted');
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+            }
         }
 
         function readSpecificEntry(btn, event) {
@@ -257,23 +274,26 @@
             showToast('Edit cancelled');
         }
 
-        function saveEdit(button, entryId, event) {
+        async function saveEdit(button, entryId, event) {
             event.stopPropagation();
             const row = button.closest('.entry-row');
             const newTitle = row.querySelector('.edit-input').value.trim();
             const newText = row.querySelector('.edit-textarea').value.trim();
+            if (newTitle.length > 120 || newText.length > 10000) {
+                showToast('⚠️ Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
+                return;
+            }
 
-            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
-            entries = entries.map(ent => {
-                if (ent.id === entryId) {
-                    ent.title = newTitle || 'Untitled Entry';
-                    ent.text = newText;
-                }
-                return ent;
-            });
-            localStorage.setItem('diary_entries', JSON.stringify(entries));
-            loadEntries();
-            showToast('✓ Entry updated successfully');
+            try {
+                await updateDiaryEntry(entryId, {
+                    title: newTitle || 'Untitled Entry',
+                    text: newText
+                });
+                await loadEntries();
+                showToast('✓ Entry updated successfully');
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+            }
         }
 
         function filterEntries() {
@@ -283,8 +303,14 @@
             });
         }
 
-        function exportEntries() {
-            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
+        async function exportEntries() {
+            let entries;
+            try {
+                entries = await loadDiaryEntries();
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+                return;
+            }
             let exportText = "SMART DIARY EXPORT\n====================\n\n";
             entries.forEach(e => {
                 exportText += `${e.date} — ${e.title} (${e.mood})\n${e.text}\nTags: ${(e.tags || []).join(', ')}\n\n--------------------\n\n`;

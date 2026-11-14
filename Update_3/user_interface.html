@@ -63,15 +63,15 @@
 
         <div class="tag-container">
             <label for="tagInput" class="sr-only">Add tag</label>
-            <input type="text" id="tagInput" class="tag-input" placeholder="+ Add tag (press Enter)" onkeydown="handleTagInput(event)">
+            <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="+ Add tag (press Enter)" onkeydown="handleTagInput(event)">
             <div id="activeTags" class="active-tags" aria-live="polite"></div>
         </div>
 
         <label for="entryTitle" class="sr-only">Entry Title</label>
-        <input type="text" id="entryTitle" class="entry-title-input" placeholder="Entry title...">
+        <input type="text" id="entryTitle" class="entry-title-input" maxlength="120" placeholder="Entry title...">
 
         <label for="editor" class="sr-only">Diary Entry Content</label>
-        <textarea id="editor" class="borderless-editor" placeholder="Start writing directly on the page..."></textarea>
+        <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="Start writing directly on the page..."></textarea>
 
         <div class="editor-footer">
             <span id="word-count" aria-live="polite">0 words • 0 characters</span>
@@ -107,6 +107,7 @@
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="entry_storage.js"></script>
     <script>
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -218,7 +219,7 @@
             showToast('✨ Daily prompt inserted');
         }
 
-        function saveCurrentEntry() {
+        async function saveCurrentEntry() {
             const titleInput = document.getElementById('entryTitle');
             const editorInput = document.getElementById('editor');
             const title = titleInput.value.trim() || 'Untitled Entry';
@@ -226,6 +227,10 @@
 
             if (!text) {
                 showToast('⚠️ Please write something before saving.');
+                return;
+            }
+            if (title.length > 120 || text.length > 10000) {
+                showToast('⚠️ Title must be 120 characters or fewer and entry text 10,000 characters or fewer.');
                 return;
             }
 
@@ -244,21 +249,20 @@
                 tags: tags
             };
 
-            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [
-                { id: 1, date: 'November 14, 2026', title: 'Frontend Redesign', mood: '😊 Happy', text: 'Today we cleaned up the Smart Diary layout to make it feel much more open and distraction-free.', tags: ['#frontend'] },
-                { id: 2, date: 'November 12, 2026', title: 'Afternoon Walk', mood: '😌 Calm', text: 'Took a break around Durham this afternoon before catching up with the backend team.', tags: ['#walk'] }
-            ];
-
-            entries.unshift(newEntry);
-            localStorage.setItem('diary_entries', JSON.stringify(entries));
+            try {
+                await createDiaryEntry(newEntry);
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+                return;
+            }
 
             document.getElementById('auto-save-status').innerText = 'Saved just now';
-            showToast('✓ Entry saved successfully!');
+            showToast(getEntrySessionToken() ? '✓ Entry saved to your account.' : '✓ Entry saved in this browser.');
 
             // Clear form
             titleInput.value = '';
             editorInput.value = '';
-            document.getElementById('activeTags').innerHTML = '';
+            document.getElementById('activeTags').replaceChildren();
             document.getElementById('word-count').innerText = '0 words • 0 characters';
         }
 
@@ -277,7 +281,13 @@
         function handleTagInput(e) {
             if (e.key === 'Enter' && e.target.value.trim() !== '') {
                 e.preventDefault();
-                const cleanTag = e.target.value.trim().replace('#', '');
+                if (document.querySelectorAll('#activeTags .tag-badge').length >= 20) {
+                    showToast('⚠️ You can add up to 20 tags per entry.');
+                    e.target.value = '';
+                    return;
+                }
+                const cleanTag = e.target.value.trim().replace(/#/g, '').slice(0, 30);
+                if (!cleanTag) return;
                 const tagContainer = document.getElementById('activeTags');
                 const span = document.createElement('span');
                 span.innerText = `#${cleanTag}`;

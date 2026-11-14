@@ -138,6 +138,7 @@
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="entry_storage.js"></script>
     <script>
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -252,63 +253,71 @@
                     dayBtn.setAttribute('aria-current', 'date');
                     activeDateStr = formattedDateStr;
 
-                    showEntriesForDate(formattedDateStr, true);
+                    showEntriesForDate(formattedDateStr, true).catch(error => showToast(`⚠️ ${error.message}`));
                 });
 
                 calendarDays.appendChild(dayBtn);
             }
         }
 
-        function showEntriesForDate(dateStr, announce = false) {
+        async function showEntriesForDate(dateStr, announce = false) {
             const titleEl = document.getElementById('preview-heading');
             const container = document.getElementById('selected-date-entries');
             
             titleEl.innerText = `Entries for ${dateStr}`;
             
-            let entries = JSON.parse(localStorage.getItem('diary_entries'));
-            if (!entries) {
-                entries = [
-                    { id: 1, date: 'November 14, 2026', title: 'Frontend Redesign', mood: '😊 Happy', text: 'Today we cleaned up the Smart Diary layout to make it feel much more open and distraction-free.', tags: ['#frontend'] },
-                    { id: 2, date: 'November 12, 2026', title: 'Afternoon Walk', mood: '😌 Calm', text: 'Took a break around Durham this afternoon before catching up with the backend team.', tags: ['#walk'] }
-                ];
-                localStorage.setItem('diary_entries', JSON.stringify(entries));
-            }
+            const entries = await loadDiaryEntries();
 
             const matchingEntries = entries.filter(e => e.date === dateStr);
 
             if (matchingEntries.length === 0) {
-                container.innerHTML = `<p class="empty-day-message">No entries found for ${dateStr}.</p>`;
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'empty-day-message';
+                emptyMessage.textContent = `No entries found for ${dateStr}.`;
+                container.replaceChildren(emptyMessage);
                 if (announce) showToast(`No entries on ${dateStr}`);
                 return;
             }
 
-            container.innerHTML = '';
+            container.replaceChildren();
             matchingEntries.forEach(entry => {
                 const card = document.createElement('div');
                 card.className = 'day-entry-card';
                 card.innerHTML = `
                     <div class="day-entry-header">
-                        <h3 class="day-entry-title">${entry.title}</h3>
-                        <span>${entry.mood}</span>
+                        <h3 class="day-entry-title"></h3>
+                        <span class="day-entry-mood"></span>
                     </div>
-                    <p style="color: inherit; line-height: 1.6; font-size: 15px;">${entry.text}</p>
-                    <div style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
-                        ${(entry.tags || []).map(t => `<span class="tag-badge">${t}</span>`).join('')}
-                    </div>
-                    <button type="button" class="btn-delete" aria-label="Delete entry ${entry.title}" onclick="deleteCalendarEntry(${entry.id}, '${dateStr}')">🗑️ Delete</button>
+                    <p class="day-entry-text" style="color: inherit; line-height: 1.6; font-size: 15px;"></p>
+                    <div class="day-entry-tags" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
+                    <button type="button" class="btn-delete">🗑️ Delete</button>
                 `;
+                card.querySelector('.day-entry-title').textContent = entry.title || '';
+                card.querySelector('.day-entry-mood').textContent = entry.mood || '';
+                card.querySelector('.day-entry-text').textContent = entry.text || '';
+                (Array.isArray(entry.tags) ? entry.tags : []).forEach(tag => {
+                    const badge = document.createElement('span');
+                    badge.className = 'tag-badge';
+                    badge.textContent = tag;
+                    card.querySelector('.day-entry-tags').appendChild(badge);
+                });
+                const deleteButton = card.querySelector('.btn-delete');
+                deleteButton.setAttribute('aria-label', `Delete entry ${entry.title || ''}`);
+                deleteButton.addEventListener('click', () => deleteCalendarEntry(entry.id, dateStr));
                 container.appendChild(card);
             });
 
             if (announce) showToast(`Loaded entries for ${dateStr}`);
         }
 
-        function deleteCalendarEntry(entryId, dateStr) {
-            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
-            entries = entries.filter(ent => ent.id !== entryId);
-            localStorage.setItem('diary_entries', JSON.stringify(entries));
-            showEntriesForDate(dateStr, false);
-            showToast('🗑️ Entry deleted');
+        async function deleteCalendarEntry(entryId, dateStr) {
+            try {
+                await deleteDiaryEntry(entryId);
+                await showEntriesForDate(dateStr, false);
+                showToast('🗑️ Entry deleted');
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+            }
         }
 
         document.getElementById("prev-month").addEventListener("click", () => {

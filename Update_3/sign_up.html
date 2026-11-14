@@ -39,7 +39,7 @@
             <small class="field-error" id="signup-username-error" aria-live="polite"></small>
 
             <label for="signup-password" style="font-size: 14px; font-weight: 600;">Password</label>
-            <input type="password" id="signup-password" required autocomplete="new-password" placeholder="Create a password" aria-describedby="signup-password-error">
+            <input type="password" id="signup-password" required maxlength="72" autocomplete="new-password" placeholder="Create a password" aria-describedby="signup-password-error">
             <small class="field-error" id="signup-password-error" aria-live="polite"></small>
 
             <button type="submit" class="save-btn" style="width: 100%;">Sign Up</button>
@@ -73,6 +73,7 @@
         const signupPassword = document.getElementById('signup-password');
         const usernamePattern = /^[A-Za-z0-9_]{3,32}$/;
         const passwordPattern = password => password.length > 8
+            && new TextEncoder().encode(password).length <= 72
             && /[A-Z]/.test(password)
             && /[a-z]/.test(password)
             && /[0-9]/.test(password)

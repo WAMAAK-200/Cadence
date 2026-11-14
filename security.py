@@ -1,32 +1,56 @@
 import json
-import re
-import string
+import secrets
+import time
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
-
-def username_format_check(username):
-    """Return True when a username is 3–32 letters, digits, or underscores."""
-    return bool(re.fullmatch(r"[A-Za-z0-9_]{3,32}", username))
-
-def password_format_check(password):
-    """Require 8+ characters with upper, lower, digit, and punctuation."""
-    return (
-        isinstance(password, str)
-        and len(password) > 8
-        and any(char.isupper() for char in password)
-        and any(char.islower() for char in password)
-        and any(char.isdigit() for char in password)
-        and any(char in string.punctuation for char in password)
-    )
+from input_validation import password_format as password_format_check
+from input_validation import username_format as username_format_check
 
 
 class AccountHandler(BaseHTTPRequestHandler):
     """Small validation endpoint for the static account page."""
 
+    sessions = {}
+    allowed_origins = {"http://127.0.0.1:8000", "http://localhost:8000"}
+
     def _cors_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        origin = self.headers.get("Origin")
+        if origin in self.allowed_origins:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+
+    def _send_json(self, status, payload):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        self._cors_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _read_json(self, maximum=4096):
+        length = int(self.headers.get("Content-Length", "0"))
+        if length < 0 or length > maximum:
+            raise OverflowError
+        return json.loads(self.rfile.read(length))
+
+    def _authenticated_account_id(self):
+        authorization = self.headers.get("Authorization", "")
+        if not authorization.startswith("Bearer "):
+            return None
+        token = authorization[7:]
+        session = self.sessions.get(token)
+        if session is None:
+            return None
+        account_id, expires_at = session
+        if time.monotonic() >= expires_at:
+            self.sessions.pop(token, None)
+            return None
+        return account_id
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -35,22 +59,42 @@ class AccountHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        if self.path == "/entries":
+            account_id = self._authenticated_account_id()
+            if account_id is None:
+                self._send_json(401, {"message": "Please log in again."})
+                return
+            from account_store import AccountStore
+
+            self._send_json(200, {"entries": AccountStore().list_entries(account_id)})
+            return
+
         files = {
-            "/": "account.html",
+            "/": "user_interface.html",
+            "/user_interface.html": "user_interface.html",
+            "/entries.html": "entries.html",
+            "/calendar.html": "calendar.html",
+            "/insights.html": "insights.html",
             "/account.html": "account.html",
             "/sign_up.html": "sign_up.html",
             "/user_style.css": "user_style.css",
+            "/entry_storage.js": "entry_storage.js",
         }
         filename = files.get(self.path)
         if filename is None:
             self.send_error(404)
             return
         try:
-            body = (Path(__file__).parent / "Update_2" / filename).read_bytes()
+            body = (Path(__file__).parent / "Update_3" / filename).read_bytes()
         except OSError:
             self.send_error(404)
             return
-        content_type = "text/css; charset=utf-8" if filename.endswith(".css") else "text/html; charset=utf-8"
+        content_types = {
+            ".css": "text/css; charset=utf-8",
+            ".js": "text/javascript; charset=utf-8",
+            ".html": "text/html; charset=utf-8",
+        }
+        content_type = content_types[Path(filename).suffix]
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -59,16 +103,41 @@ class AccountHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        if self.path == "/logout":
+            authorization = self.headers.get("Authorization", "")
+            token = authorization[7:] if authorization.startswith("Bearer ") else ""
+            self.sessions.pop(token, None)
+            self._send_json(200, {"message": "Logged out."})
+            return
+
+        if self.path == "/entries":
+            account_id = self._authenticated_account_id()
+            if account_id is None:
+                self._send_json(401, {"message": "Please log in again."})
+                return
+            try:
+                data = self._read_json(50000)
+                from account_store import AccountStore
+
+                entry = AccountStore().create_entry(account_id, data)
+            except OverflowError:
+                self._send_json(413, {"message": "Entry is too large."})
+                return
+            except (ValueError, json.JSONDecodeError) as error:
+                self._send_json(400, {"message": str(error) or "Invalid JSON."})
+                return
+            self._send_json(201, {"entry": entry})
+            return
+
         if self.path not in ("/validate-account", "/signup-account", "/login-account"):
             self.send_error(404)
             return
 
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-            if length > 4096:
-                self.send_error(413)
-                return
-            data = json.loads(self.rfile.read(length))
+            data = self._read_json()
+        except OverflowError:
+            self._send_json(413, {"message": "Request is too large."})
+            return
         except (ValueError, json.JSONDecodeError):
             self.send_error(400, "Invalid JSON")
             return
@@ -93,37 +162,80 @@ class AccountHandler(BaseHTTPRequestHandler):
         elif self.path == "/login-account":
             from account_store import AccountStore
 
-            authenticated = AccountStore().verify_account(username, password)
+            account_id = AccountStore().authenticated_account_id(username, password) if valid else None
+            authenticated = account_id is not None
+            session_token = None
+            if authenticated:
+                session_token = secrets.token_urlsafe(32)
+                self.sessions[session_token] = (account_id, time.monotonic() + 8 * 60 * 60)
             message = "Login successful." if authenticated else "Username or password is incorrect."
         elif not valid:
             message = "Use a 3–32 character username (letters, numbers, underscores) and a password longer than 8 characters with uppercase, lowercase, a number, and punctuation."
         else:
             message = "Username and password formats are valid."
-        body = json.dumps({
+        response = {
             "valid": valid,
             "created": created,
             "authenticated": authenticated,
             "message": message,
-        }).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self._cors_headers()
-        self.end_headers()
-        self.wfile.write(body)
+        }
+        if self.path == "/login-account" and authenticated:
+            response["session_token"] = session_token
+        self._send_json(200, response)
+
+    def do_PUT(self):
+        if not self.path.startswith("/entries/"):
+            self.send_error(404)
+            return
+        account_id = self._authenticated_account_id()
+        if account_id is None:
+            self._send_json(401, {"message": "Please log in again."})
+            return
+        try:
+            entry_id = int(self.path.removeprefix("/entries/"))
+            data = self._read_json(50000)
+            from account_store import AccountStore
+
+            updated = AccountStore().update_entry(account_id, entry_id, data.get("title"), data.get("text"))
+        except OverflowError:
+            self._send_json(413, {"message": "Entry is too large."})
+            return
+        except (ValueError, json.JSONDecodeError, AttributeError):
+            self._send_json(400, {"message": "Invalid entry data."})
+            return
+        if not updated:
+            self._send_json(404, {"message": "Entry not found."})
+            return
+        self._send_json(200, {"message": "Entry updated."})
+
+    def do_DELETE(self):
+        if not self.path.startswith("/entries/"):
+            self.send_error(404)
+            return
+        account_id = self._authenticated_account_id()
+        if account_id is None:
+            self._send_json(401, {"message": "Please log in again."})
+            return
+        try:
+            entry_id = int(self.path.removeprefix("/entries/"))
+        except ValueError:
+            self._send_json(400, {"message": "Invalid entry id."})
+            return
+        from account_store import AccountStore
+
+        deleted = AccountStore().delete_entry(account_id, entry_id)
+        if not deleted:
+            self._send_json(404, {"message": "Entry not found."})
+            return
+        self._send_json(200, {"message": "Entry deleted."})
 
 
 if __name__ == "__main__":
-    for port in range(8000, 8011):
-        try:
-            server = HTTPServer(("127.0.0.1", port), AccountHandler)
-            break
-        except OSError:
-            continue
-    else:
-        raise RuntimeError("No available local port between 8000 and 8010.")
+    try:
+        server = HTTPServer(("127.0.0.1", 8000), AccountHandler)
+    except OSError as error:
+        raise RuntimeError("Port 8000 is unavailable; stop the process using it before starting Smart Diary.") from error
 
-    print(f"Account validation server listening at http://127.0.0.1:{port}")
+    print("Smart Diary account and entry server listening at http://127.0.0.1:8000")
     server.serve_forever()
 
