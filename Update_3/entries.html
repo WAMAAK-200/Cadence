@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>All Entries - Smart Diary</title>
+    <link rel="stylesheet" href="user_style.css">
+    <style>
+        .entry-card-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn-delete {
+            background: transparent;
+            border: 1px solid #e0b4b4;
+            color: #b91c1c;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.15s, color 0.15s;
+        }
+        .btn-delete:hover {
+            background: #fee2e2;
+        }
+        body.dark-mode .btn-delete {
+            border-color: #7f1d1d;
+            color: #fca5a5;
+        }
+        body.dark-mode .btn-delete:hover {
+            background: #450a0a;
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <aside class="sidebar" aria-label="Primary Navigation">
+        <div>
+            <div class="brand">Smart Diary</div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html">Today</a></li>
+                    <li><a href="entries.html" class="active" aria-current="page">All Entries</a></li>
+                    <li><a href="calendar.html">Calendar</a></li>
+                    <li><a href="insights.html">Insights</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
+            <a href="account.html" class="account-link">👤 Account / Log In</a>
+        </div>
+    </aside>
+
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+        <h3>
+            <span>Style &amp; Accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
+        </div>
+
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+    </div>
+
+    <main class="main-content" id="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading">All Entries</h1>
+        </div>
+
+        <div class="search-bar-row">
+            <label for="searchInput" class="sr-only">Search entries</label>
+            <input type="text" id="searchInput" class="search-input" onkeyup="filterEntries()" placeholder="Search entries by keyword or mood...">
+            <button class="export-btn" onclick="exportEntries()">📥 Export (.txt)</button>
+        </div>
+
+        <div id="entryList"></div>
+    </main>
+
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script>
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function setFont(fontType, silent = false) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+
+            localStorage.setItem('selected-font', fontType);
+            if (!silent) {
+                const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
+                showToast(`✍️ Font switched to ${labels[fontType]}`);
+            }
+        }
+
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont, true);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+        }
+        applySavedPreferences();
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function loadEntries() {
+            let entries = JSON.parse(localStorage.getItem('diary_entries'));
+            if (!entries) {
+                entries = [
+                    { id: 1, date: 'November 14, 2026', title: 'Frontend Redesign', mood: '😊 Happy', text: 'Today we cleaned up the Smart Diary layout to make it feel much more open and distraction-free.', tags: ['#frontend'] },
+                    { id: 2, date: 'November 12, 2026', title: 'Afternoon Walk', mood: '😌 Calm', text: 'Took a break around Durham this afternoon before catching up with the backend team.', tags: ['#walk'] }
+                ];
+                localStorage.setItem('diary_entries', JSON.stringify(entries));
+            }
+
+            const listContainer = document.getElementById('entryList');
+            listContainer.innerHTML = '';
+
+            if (entries.length === 0) {
+                listContainer.innerHTML = '<p style="color: #777; font-style: italic; margin-top: 20px;">No diary entries yet. Write your first entry on the Today page!</p>';
+                return;
+            }
+
+            entries.forEach(entry => {
+                const article = document.createElement('article');
+                article.className = 'entry-row';
+                article.tabIndex = 0;
+                article.setAttribute('role', 'button');
+                article.setAttribute('aria-label', `Edit entry: ${entry.date} — ${entry.title}`);
+                article.onclick = () => enableEdit(article);
+                article.onkeydown = (e) => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); enableEdit(article); } };
+
+                article.innerHTML = `
+                    <div class="entry-display">
+                        <div class="entry-row-header">
+                            <h2 class="display-title" style="font-size: 18px;">${entry.date} — ${entry.title}</h2>
+                            <span>${entry.mood}</span>
+                        </div>
+                        <p class="display-text" style="color: inherit; line-height: 1.6;">${entry.text}</p>
+                        <div style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;">
+                            ${(entry.tags || []).map(t => `<span class="tag-badge">${t}</span>`).join('')}
+                        </div>
+                        <div class="entry-card-actions">
+                            <button type="button" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="readSpecificEntry(this, event)">🔊 Listen</button>
+                            <button type="button" class="btn-delete" aria-label="Delete entry ${entry.title}" onclick="deleteEntry(${entry.id}, event)">🗑️ Delete</button>
+                        </div>
+                    </div>
+
+                    <div class="entry-edit-form" onclick="event.stopPropagation()">
+                        <label class="sr-only">Edit Title</label>
+                        <input type="text" class="edit-input" value="${entry.title}">
+                        <label class="sr-only">Edit Content</label>
+                        <textarea class="edit-textarea">${entry.text}</textarea>
+                        <div class="edit-actions">
+                            <button type="button" class="btn-secondary" onclick="cancelEdit(this, event)">Cancel</button>
+                            <button type="button" class="save-btn" onclick="saveEdit(this, ${entry.id}, event)">Save Changes</button>
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(article);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', loadEntries);
+
+        function deleteEntry(entryId, event) {
+            event.stopPropagation();
+            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
+            entries = entries.filter(ent => ent.id !== entryId);
+            localStorage.setItem('diary_entries', JSON.stringify(entries));
+            loadEntries();
+            showToast('🗑️ Entry deleted');
+        }
+
+        function readSpecificEntry(btn, event) {
+            event.stopPropagation();
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const row = btn.closest('.entry-row');
+                const title = row.querySelector('.display-title').innerText;
+                const text = row.querySelector('.display-text').innerText;
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(title + ". " + text));
+                showToast('🔊 Reading entry aloud...');
+            }
+        }
+
+        function enableEdit(rowElement) {
+            document.querySelectorAll('.entry-row').forEach(row => {
+                if (row !== rowElement) row.classList.remove('is-editing');
+            });
+            rowElement.classList.add('is-editing');
+        }
+
+        function cancelEdit(button, event) {
+            event.stopPropagation();
+            button.closest('.entry-row').classList.remove('is-editing');
+            showToast('Edit cancelled');
+        }
+
+        function saveEdit(button, entryId, event) {
+            event.stopPropagation();
+            const row = button.closest('.entry-row');
+            const newTitle = row.querySelector('.edit-input').value.trim();
+            const newText = row.querySelector('.edit-textarea').value.trim();
+
+            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
+            entries = entries.map(ent => {
+                if (ent.id === entryId) {
+                    ent.title = newTitle || 'Untitled Entry';
+                    ent.text = newText;
+                }
+                return ent;
+            });
+            localStorage.setItem('diary_entries', JSON.stringify(entries));
+            loadEntries();
+            showToast('✓ Entry updated successfully');
+        }
+
+        function filterEntries() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.entry-row').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(query) ? 'block' : 'none';
+            });
+        }
+
+        function exportEntries() {
+            let entries = JSON.parse(localStorage.getItem('diary_entries')) || [];
+            let exportText = "SMART DIARY EXPORT\n====================\n\n";
+            entries.forEach(e => {
+                exportText += `${e.date} — ${e.title} (${e.mood})\n${e.text}\nTags: ${(e.tags || []).join(', ')}\n\n--------------------\n\n`;
+            });
+
+            const blob = new Blob([exportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'smart-diary-backup.txt';
+            a.click();
+            showToast('📥 Exported entries to smart-diary-backup.txt');
+        }
+    </script>
+</body>
+</html>

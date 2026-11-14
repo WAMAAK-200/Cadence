@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Insights - Smart Diary</title>
+    <link rel="stylesheet" href="user_style.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <aside class="sidebar" aria-label="Primary Navigation">
+        <div>
+            <div class="brand">Smart Diary</div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html">Today</a></li>
+                    <li><a href="entries.html">All Entries</a></li>
+                    <li><a href="calendar.html">Calendar</a></li>
+                    <li><a href="insights.html" class="active" aria-current="page">Insights</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
+            <a href="account.html" class="account-link">👤 Account / Log In</a>
+        </div>
+    </aside>
+
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+        <h3>
+            <span>Style &amp; Accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
+        </div>
+
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+    </div>
+
+    <main class="main-content" id="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading">Smart Insights</h1>
+        </div>
+
+        <section class="insight-block" aria-labelledby="mood-heading">
+            <h2 id="mood-heading" style="font-size: 20px; margin-bottom: 16px;">Mood Trends This Week</h2>
+            
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span id="happy-label">😊 Happy</span><span>60%</span>
+            </div>
+            <div class="bar-track" role="progressbar" aria-labelledby="happy-label" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
+                <div class="bar-fill" style="width: 60%;"></div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span id="calm-label">😌 Calm</span><span>30%</span>
+            </div>
+            <div class="bar-track" role="progressbar" aria-labelledby="calm-label" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">
+                <div class="bar-fill" style="width: 30%;"></div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                <span id="stressed-label">🌧️ Stressed</span><span>10%</span>
+            </div>
+            <div class="bar-track" role="progressbar" aria-labelledby="stressed-label" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100">
+                <div class="bar-fill" style="width: 10%;"></div>
+            </div>
+        </section>
+
+        <section class="insight-block" aria-labelledby="summary-heading">
+            <h2 id="summary-heading" style="font-size: 20px; margin-bottom: 10px;">Weekly AI Summary</h2>
+            <p style="line-height: 1.7;">
+                You wrote <strong>4 entries</strong> this week. Recurring topics include <strong>web design</strong>, <strong>team collaboration</strong>, and <strong>evening walks</strong>.
+            </p>
+        </section>
+    </main>
+
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script>
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function setFont(fontType, silent = false) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+
+            localStorage.setItem('selected-font', fontType);
+            if (!silent) {
+                const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
+                showToast(`✍️ Font switched to ${labels[fontType]}`);
+            }
+        }
+
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont, true);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+        }
+        applySavedPreferences();
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+    </script>
+</body>
+</html>
