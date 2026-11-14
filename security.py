@@ -132,10 +132,10 @@ class AccountHandler(BaseHTTPRequestHandler):
         if clean_path in ("", "index.html"):
             clean_path = "user_interface.html"
 
-        # Check in root first, then Update_3
+        # Check in root first, then frontend
         target_file = PROJECT_ROOT / clean_path
         if not target_file.is_file():
-            target_file = PROJECT_ROOT / "Update_3" / clean_path
+            target_file = PROJECT_ROOT / "frontend" / clean_path
 
         if not target_file.is_file():
             self.send_error(404)
