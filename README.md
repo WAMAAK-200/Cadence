@@ -18,7 +18,7 @@
    - Instant AI telemetry extraction and spoken empathetic feedback.
 
 3. **Algorithmic Weekly Music Composition**
-   - Real-time generative Web Audio synthesizer (`music_synth.js`).
+   - Real-time generative Web Audio synthesizer (`frontend/music_synth.js`).
    - **Key / Scale**: Driven by average Mood (Major pentatonic for high mood, Dorian for reflective, Minor harmonic for stress/low mood).
    - **Tempo (BPM)**: Driven by average Sleep duration (>8h = 80–90 BPM, <5h = 130 BPM).
    - **Tension / Timbre**: Modulated by Stress levels (ambient sine waves vs resonant dissonance).

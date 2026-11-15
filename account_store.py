@@ -1,10 +1,4 @@
-"""SQLite storage for validated Smart Diary accounts.
-
-Sensitive account and diary data is encrypted at rest (see data_encryption.py).
-The plaintext diary columns are kept only for compatibility with older
-databases; new rows store "[encrypted]" placeholders and the real data in
-``encrypted_payload``.
-"""
+"""SQLite storage for validated Smart Diary accounts and encrypted diary data."""
 
 import hashlib
 import hmac
@@ -72,7 +66,6 @@ class AccountStore:
 
     def __init__(self, database_path=DEFAULT_DATABASE):
         self.database_path = str(database_path)
-        migrated_sensitive_data = False
         with self._connect() as connection:
             connection.execute(
                 """
@@ -86,18 +79,6 @@ class AccountStore:
                 """
             )
             self._ensure_account_columns(connection)
-            connection.execute("DROP INDEX IF EXISTS accounts_email_unique")
-            legacy_accounts = connection.execute(
-                "SELECT id, email FROM accounts WHERE email IS NOT NULL"
-            ).fetchall()
-            migrated_sensitive_data = migrated_sensitive_data or bool(legacy_accounts)
-            for account in legacy_accounts:
-                plain_email = account["email"]
-                connection.execute(
-                    "UPDATE accounts SET email_encrypted = ?, email_lookup_hash = ?, email = NULL "
-                    "WHERE id = ?",
-                    (encrypt_text(plain_email), email_lookup_digest(plain_email), account["id"]),
-                )
             connection.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS accounts_email_lookup_unique "
                 "ON accounts(email_lookup_hash) WHERE email_lookup_hash IS NOT NULL"
@@ -127,25 +108,6 @@ class AccountStore:
                 """
             )
             self._ensure_entry_columns(connection)
-            legacy_entries = connection.execute(
-                "SELECT * FROM diary_entries WHERE encrypted_payload IS NULL"
-            ).fetchall()
-            migrated_sensitive_data = migrated_sensitive_data or bool(legacy_entries)
-            for entry in legacy_entries:
-                # Leave rows that were half-migrated by an older build alone: the
-                # original data no longer exists and re-encrypting placeholders
-                # would make the loss look like a successful migration.
-                if entry["body"] == "[encrypted]":
-                    continue
-                payload = self._entry_from_legacy_row(entry)
-                connection.execute(
-                    "UPDATE diary_entries SET date = '[encrypted]', title = '[encrypted]', "
-                    "mood = '[encrypted]', body = '[encrypted]', tags_json = '[]', "
-                    "sleep_hours = NULL, sleep_quality = NULL, stress = NULL, "
-                    "fatigue = NULL, study_hours = NULL, work_hours = NULL, "
-                    "extra_json = '{}', encrypted_payload = ? WHERE id = ?",
-                    (encrypt_text(json.dumps(payload)), entry["id"]),
-                )
             connection.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS diary_entries_account_source "
                 "ON diary_entries(account_id, source_id) WHERE source_id IS NOT NULL"
@@ -166,18 +128,12 @@ class AccountStore:
                 """
             )
 
-        if migrated_sensitive_data:
-            # Rebuild the database file so freed plaintext pages are overwritten.
-            with self._connect() as connection:
-                connection.execute("VACUUM")
-
     @staticmethod
     def _ensure_account_columns(connection):
         columns = {row["name"] for row in connection.execute("PRAGMA table_info(accounts)")}
         additions = (
             ("mode", "mode TEXT NOT NULL DEFAULT 'student'"),
             ("settings_json", "settings_json TEXT NOT NULL DEFAULT '{}'"),
-            ("email", "email TEXT"),
             ("email_encrypted", "email_encrypted BLOB"),
             ("email_lookup_hash", "email_lookup_hash TEXT"),
         )
@@ -217,12 +173,8 @@ class AccountStore:
 
     # ---------- Account methods ----------
 
-    def create_account(self, username, password, email=None, mode="student"):
-        """Validate account details and save the encrypted email and password hash.
-
-        Email is optional so older clients (and the integration tests) that only
-        send a username and password keep working; if present it must be valid.
-        """
+    def create_account(self, username, password, email, mode="student"):
+        """Validate account details and save the encrypted email and password hash."""
         if not username_format_check(username):
             raise ValueError("Username must be 3–32 letters, numbers, or underscores.")
         if not password_format_check(password):
@@ -230,23 +182,20 @@ class AccountStore:
                 "Password must be longer than 8 characters and contain uppercase, "
                 "lowercase, a number, and punctuation."
             )
-        if email not in (None, ""):
-            if not email_format_check(email):
-                raise ValueError("Enter a valid email address.")
-        else:
-            email = None
+        if not email_format_check(email):
+            raise ValueError("Enter a valid email address.")
         if mode not in VALID_MODES:
             mode = "student"
 
         password_hash = _hash_password(password)
-        encrypted_email = encrypt_text(email) if email else None
-        lookup_hash = email_lookup_digest(email) if email else None
+        encrypted_email = encrypt_text(email)
+        lookup_hash = email_lookup_digest(email)
         try:
             with self._connect() as connection:
                 cursor = connection.execute(
                     "INSERT INTO accounts "
-                    "(username, email, email_encrypted, email_lookup_hash, password_hash, mode) "
-                    "VALUES (?, NULL, ?, ?, ?, ?)",
+                    "(username, email_encrypted, email_lookup_hash, password_hash, mode) "
+                    "VALUES (?, ?, ?, ?, ?)",
                     (username, encrypted_email, lookup_hash, password_hash, mode),
                 )
                 return cursor.lastrowid
@@ -371,49 +320,18 @@ class AccountStore:
         return payload
 
     @staticmethod
-    def _entry_from_legacy_row(row):
-        """Build the encrypted payload from the pre-encryption plaintext columns."""
-        try:
-            tags = json.loads(row["tags_json"])
-        except Exception:
-            tags = []
-        try:
-            extra = json.loads(row["extra_json"])
-        except Exception:
-            extra = {}
-        payload = {
-            "date": row["date"],
-            "title": row["title"],
-            "mood": row["mood"],
-            "text": row["body"],
-            "tags": tags if isinstance(tags, list) else [],
-            "sleepHours": row["sleep_hours"],
-            "sleepQuality": row["sleep_quality"],
-            "stress": row["stress"],
-            "fatigue": row["fatigue"],
-            "studyHours": row["study_hours"],
-            "workHours": row["work_hours"],
-        }
-        if isinstance(extra, dict):
-            for key in EXTRA_ENTRY_FIELDS:
-                if key in extra:
-                    payload[key] = extra[key]
-        return payload
-
-    @staticmethod
     def _entry_from_row(row):
-        """Return an entry from either the encrypted payload or the legacy columns."""
+        """Return a diary entry from its encrypted payload."""
         raw_payload = row["encrypted_payload"]
-        if raw_payload:
-            try:
-                payload = json.loads(decrypt_text(raw_payload))
-            except Exception as error:
-                raise RuntimeError(
-                    "An encrypted diary entry could not be read. Restore the matching "
-                    ".smartdiary.key file before starting the app."
-                ) from error
-        else:
-            payload = AccountStore._entry_from_legacy_row(row)
+        if not raw_payload:
+            raise RuntimeError("A diary entry is missing its encrypted payload.")
+        try:
+            payload = json.loads(decrypt_text(raw_payload))
+        except Exception as error:
+            raise RuntimeError(
+                "An encrypted diary entry could not be read. Restore the matching "
+                ".smartdiary.key file before starting the app."
+            ) from error
         if not isinstance(payload, dict):
             raise RuntimeError("A stored diary entry has an unexpected format.")
 
