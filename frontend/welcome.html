@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tell the browser up front that both themes are supported (avoids a white flash in dark mode). -->
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
     <title>Cadence: a diary that plays your week back</title>
     <meta name="description" content="Check in for ten seconds a day. Cadence turns your week into plain-English patterns and a short piece of music. Built in the North East, for students and anyone juggling a lot.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,9 +34,30 @@
             --body: 'Hanken Grotesk', 'Segoe UI', system-ui, sans-serif;
             --gutter: clamp(16px, 4vw, 56px);
             --max: 1200px;
+            --nav-h: 68px;
+            /* Native controls, scrollbars and the page canvas follow the theme. */
+            color-scheme: light dark;
+            accent-color: var(--ink);
+        }
+        /* Dark theme: theme.js sets <html data-theme> (system setting unless overridden in the app). */
+        :root[data-theme="dark"] {
+            --paper: oklch(0.19 0.014 265);
+            --paper-2: oklch(0.215 0.015 265);
+            --paper-3: oklch(0.27 0.016 265);
+            --surface: oklch(0.235 0.015 265);
+            --line: oklch(0.32 0.015 265);
+            --ink: oklch(0.94 0.01 85);
+            --ink-2: oklch(0.82 0.01 85);
+            --ink-3: oklch(0.72 0.01 85);
+            --on-ink: oklch(0.19 0.014 265);
+            --focus: oklch(0.72 0.13 255);
+            --happy: oklch(0.82 0.14 88);
+            --calm: oklch(0.74 0.1 210);
+            --reflective: oklch(0.72 0.11 300);
+            --stressed: oklch(0.7 0.16 32);
         }
         @media (prefers-color-scheme: dark) {
-            :root {
+            :root:not([data-theme]) {
                 --paper: oklch(0.19 0.014 265);
                 --paper-2: oklch(0.215 0.015 265);
                 --paper-3: oklch(0.27 0.016 265);
@@ -50,9 +74,12 @@
                 --stressed: oklch(0.7 0.16 32);
             }
         }
+        :root[data-theme="light"] { color-scheme: light; }
+        :root[data-theme="dark"] { color-scheme: dark; }
 
         *, *::before, *::after { box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
+        /* scroll-padding keeps anchor targets and focused controls clear of the sticky nav. */
+        html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
         body {
             margin: 0;
             background: var(--paper);
@@ -62,6 +89,7 @@
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
         }
+        ::selection { background: color-mix(in oklch, var(--happy) 45%, transparent); color: var(--ink); }
         a { color: inherit; }
         :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
         .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
@@ -84,9 +112,14 @@
         .btn-link { border: 0; padding: 0; min-height: 44px; background: none; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; font-weight: 600; }
 
         /* ---------- Nav ---------- */
-        .nav { position: sticky; top: 0; z-index: 5; background: color-mix(in oklch, var(--paper) 92%, transparent); backdrop-filter: saturate(1.2) blur(8px); border-bottom: 1px solid transparent; transition: border-color 0.2s; }
-        .nav.is-scrolled { border-bottom-color: var(--line); }
-        .nav-inner { display: flex; align-items: center; gap: 28px; min-height: 68px; }
+        /* The nav is a scroll-state container: its bar gains a rule only once it is actually stuck.
+           Browsers without scroll-state queries simply keep a sticky nav with no rule (progressive enhancement). */
+        .nav { position: sticky; top: 0; z-index: 5; container-type: scroll-state; container-name: site-nav; }
+        .nav-bar { background: color-mix(in oklch, var(--paper) 92%, transparent); backdrop-filter: saturate(1.2) blur(8px); border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+        @container site-nav scroll-state(stuck: top) {
+            .nav-bar { border-bottom-color: var(--line); }
+        }
+        .nav-inner { display: flex; align-items: center; gap: 28px; min-height: var(--nav-h); }
         .brand { display: inline-flex; align-items: center; gap: 10px; font: 600 1.375rem/1 var(--display); text-decoration: none; letter-spacing: -0.01em; }
         .brand svg { width: 26px; height: 26px; }
         .nav-links { display: flex; gap: 24px; margin-left: auto; list-style: none; padding: 0; margin-top: 0; margin-bottom: 0; }
@@ -302,9 +335,19 @@
         .foot small { flex-basis: 100%; color: var(--ink-3); font-size: 0.8125rem; }
 
         /* ---------- Motion ---------- */
-        .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.7s var(--ease-expo), transform 0.7s var(--ease-expo); }
-        .reveal.is-in { opacity: 1; transform: none; }
-        .no-js .reveal { opacity: 1; transform: none; }
+        /* Sections fade up as they scroll in, driven by the scroll position itself (no JS).
+           Decorative only, so browsers without scroll-driven animations just show the content. */
+        @media (prefers-reduced-motion: no-preference) {
+            @supports ((animation-timeline: view()) and (animation-range: entry)) {
+                @keyframes reveal { from { opacity: 0; transform: translateY(24px); } }
+                .reveal {
+                    animation: reveal auto linear backwards;
+                    /* after the shorthand, so it doesn't reset them */
+                    animation-timeline: view();
+                    animation-range: entry 0% entry 70%;
+                }
+            }
+        }
         @keyframes rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
         .bars.is-in .stem { animation: rise 0.9s var(--ease-expo) both; animation-delay: calc(var(--i) * 70ms + 150ms); }
         @media (prefers-reduced-motion: no-preference) {
@@ -312,16 +355,22 @@
         }
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
-            .reveal { opacity: 1; transform: none; transition: none; }
             .bars.is-in .stem { animation: none; }
             .stem { transition: none; }
         }
+
+        /* Scale fallback fonts to each web font's x-height so text doesn't jump when the fonts arrive.
+           Set per element so Lora headings use Lora's own ratio. Kept last: the `font` shorthand
+           used above resets font-size-adjust, so this must come after it. */
+        /* :root + :is() outranks section rules like `.hero h1` that also set `font`. */
+        :root :is(body, h1, h2, h3, p, blockquote, .brand, .map-to, .step-n, .score-title, .said) { font-size-adjust: from-font; }
     </style>
 </head>
 <body class="no-js">
     <a class="skip" href="#main">Skip to content</a>
 
     <header class="nav" id="nav">
+        <div class="nav-bar">
         <div class="wrap nav-inner">
             <a class="brand" href="#top" aria-label="Cadence, home">
                 <svg viewBox="0 0 26 26" aria-hidden="true">
@@ -338,6 +387,7 @@
                 <li><a href="#honest">Privacy &amp; care</a></li>
             </ul>
             <a class="btn btn-primary" href="user_interface.html">Open the diary</a>
+        </div>
         </div>
     </header>
 
@@ -552,23 +602,6 @@
     <script>
         document.body.classList.remove('no-js');
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        // ---- Nav border once scrolled ----
-        const nav = document.getElementById('nav');
-        const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 8);
-        window.addEventListener('scroll', onScroll, { passive: true });
-        onScroll();
-
-        // ---- Reveal on scroll ----
-        const revealables = document.querySelectorAll('.reveal');
-        if ('IntersectionObserver' in window && !reduceMotion) {
-            const io = new IntersectionObserver(items => items.forEach(item => {
-                if (item.isIntersecting) { item.target.classList.add('is-in'); io.unobserve(item.target); }
-            }), { rootMargin: '0px 0px -8% 0px' });
-            revealables.forEach(el => io.observe(el));
-        } else {
-            revealables.forEach(el => el.classList.add('is-in'));
-        }
 
         // ---- The example week (made-up data, clearly labelled on the page) ----
         const MOODS = ['happy', 'calm', 'reflective', 'stressed'];

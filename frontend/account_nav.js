@@ -4,7 +4,7 @@ window.updateAccountNavigation = function updateAccountNavigation() {
 
     document.querySelectorAll('.session-link').forEach(link => {
         // Keep the icon; only the words change.
-        const label = activeAccountSession ? 'Account' : 'Log In';
+        const label = activeAccountSession ? 'Account' : 'Log in';
         const labelEl = link.querySelector('.nav-label');
         if (labelEl) labelEl.textContent = label;
         else link.textContent = label;

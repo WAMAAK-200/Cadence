@@ -3,7 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>All Entries - Smart Diary</title>
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
+    <title>All Entries - Cadence</title>
     <link rel="stylesheet" href="user_style.css">
     <style>
         .entry-card-actions {
@@ -46,13 +48,13 @@
 
     <aside class="sidebar" aria-label="Primary Navigation">
         <div>
-            <div class="brand">Smart Diary</div>
+            <a class="brand" href="welcome.html" aria-label="Cadence, about the app"><svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true" focusable="false"><rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/><rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/><rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/></svg><span>Cadence</span></a>
             <nav>
                 <ul class="nav-menu">
-                    <li><a href="user_interface.html">Today</a></li>
-                    <li><a href="entries.html" class="active" aria-current="page">All Entries</a></li>
-                    <li><a href="calendar.html">Calendar</a></li>
-                    <li><a href="insights.html">Insights</a></li>
+                    <li><a href="user_interface.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pen"></use></svg><span class="nav-label">Today</span></a></li>
+                    <li><a href="entries.html" class="active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span class="nav-label">All Entries</span></a></li>
+                    <li><a href="calendar.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg><span class="nav-label">Calendar</span></a></li>
+                    <li><a href="insights.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wave"></use></svg><span class="nav-label">Insights</span></a></li>
                 </ul>
             </nav>
         </div>
@@ -64,7 +66,7 @@
         </div>
     </aside>
 
-    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Display and accessibility options">
         <h3>
             <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
@@ -347,8 +349,7 @@
         }
 
         function toggleDarkMode() {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('dark-mode', isDark);
+            const isDark = cadenceToggleTheme() === 'dark';
             showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
@@ -375,7 +376,6 @@
         }
 
         function applySavedPreferences() {
-            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
             const savedFont = localStorage.getItem('selected-font') || 'default';
             setFont(savedFont);
 

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
 
 /* =========================================================
    Tokens. Every colour on the page comes from here.
@@ -38,6 +38,9 @@
     --text-2xl: 2rem;
 }
 
+/* Dark theme. theme.js sets <html data-theme> (system setting unless the user overrides it).
+   Set on the root so tokens derived from these on :root resolve in dark too. */
+:root[data-theme="dark"],
 body.dark-mode {
     --paper: oklch(0.19 0.014 265);
     --paper-2: oklch(0.215 0.015 265);
@@ -56,6 +59,31 @@ body.dark-mode {
     --stressed: oklch(0.7 0.16 32);
     --shadow-pop: 0 12px 32px oklch(0.05 0.01 265 / 0.5);
 }
+/* Without JavaScript, follow the system setting. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --paper: oklch(0.19 0.014 265);
+        --paper-2: oklch(0.215 0.015 265);
+        --paper-3: oklch(0.27 0.016 265);
+        --surface: oklch(0.235 0.015 265);
+        --line: oklch(0.31 0.015 265);
+        --ink: oklch(0.94 0.01 85);
+        --ink-2: oklch(0.8 0.01 85);
+        --ink-3: oklch(0.7 0.01 85);
+        --on-ink: oklch(0.19 0.014 265);
+        --focus: oklch(0.72 0.13 255);
+        --danger: oklch(0.7 0.15 28);
+        --happy: oklch(0.82 0.14 88);
+        --calm: oklch(0.74 0.1 210);
+        --reflective: oklch(0.72 0.11 300);
+        --stressed: oklch(0.7 0.16 32);
+        --shadow-pop: 0 12px 32px oklch(0.05 0.01 265 / 0.5);
+    }
+}
+/* Native controls, scrollbars and the page canvas follow the theme in use. */
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 [data-mood="happy"] { --mood: var(--happy); }
 [data-mood="calm"] { --mood: var(--calm); }
@@ -1217,6 +1245,7 @@ body.a11y-readable-spacing p {
     gap: 8px;
     animation: fadeIn 0.3s ease-out;
 }
+:root[data-theme="dark"] .crisis-banner,
 body.dark-mode .crisis-banner {
     background: #450a0a;
     border-color: #f87171;
@@ -2427,3 +2456,218 @@ body[data-flow-mood="stressed"] { --flow-accent: oklch(0.5 0.07 35); }
 #micIcon { display: inline-flex; }
 #micIcon .icon { width: 1.25em; height: 1.25em; }
 .btn-secondary .icon { margin-right: 4px; }
+
+/* =========================================================
+   Cadence refresh: one look with the product site (welcome.html).
+   Same paper, ink, Lora headings and Hanken Grotesk body text.
+   ========================================================= */
+:root {
+    --body: 'Hanken Grotesk', 'Segoe UI', system-ui, sans-serif;
+    --heading: 'Lora', Georgia, serif;
+    --r-lg: 14px;
+    accent-color: var(--ink);
+}
+body {
+    font-family: var(--body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font-family: inherit; }
+/* Keep the skip link fully off-screen until it is focused (taller text made it peek out). */
+.skip-link:not(:focus) { top: -64px; }
+::selection { background: color-mix(in oklch, var(--happy) 45%, transparent); color: var(--ink); }
+
+/* ---------- Brand ---------- */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px 30px;
+    font-family: var(--heading);
+    font-weight: 600;
+    font-size: 1.375rem;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    text-decoration: none;
+}
+.brand-mark { width: 24px; height: 24px; flex: none; }
+.brand:focus-visible { outline-offset: 4px; border-radius: 6px; }
+
+/* ---------- Navigation ---------- */
+.nav-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+.nav-menu a .icon { color: var(--ink-3); transition: color 0.15s var(--ease); }
+.nav-menu a:hover .icon,
+.nav-menu a.active .icon { color: var(--ink); }
+.nav-menu a.active {
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+}
+.sidebar-btn, .account-link { border-radius: 10px; }
+
+/* ---------- Page width: centred, comfortable reading measure ----------
+   The column is centred in the space beside the sidebar (232px) by growing the side padding,
+   so it works whatever spacing rules the page's own sections use. */
+.main-content,
+.flow-page .main-content {
+    --measure: 880px;
+    max-width: none;
+    padding-block: clamp(32px, 5vw, 64px) 88px;
+    padding-inline: max(clamp(24px, 5vw, 72px), calc((100vw - 232px - var(--measure)) / 2));
+}
+.flow-page .main-content { --measure: 680px; }
+
+/* Page titles in the display face */
+h1.date-heading {
+    font-family: var(--heading);
+    font-weight: 500;
+    font-size: clamp(2rem, 3.4vw, 2.75rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+/* ---------- Entries ---------- */
+.entry-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    transition: border-color 0.15s var(--ease);
+}
+.entry-card:hover { border-color: color-mix(in oklch, var(--ink) 22%, var(--line)); }
+.entry-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px 16px;
+    margin-bottom: 10px;
+}
+.entry-card-title {
+    font-family: var(--heading);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+.entry-card-date {
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+.display-text { font-size: 0.9688rem; color: var(--ink-2); }
+.tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--ink-2);
+}
+.tag-remove {
+    background: none;
+    border: 0;
+    padding: 4px 6px;
+    border-radius: 6px;
+    color: var(--ink-3);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-xs);
+    line-height: 1;
+}
+.tag-remove:hover { color: var(--danger); }
+.empty-state {
+    padding: 28px 0;
+    color: var(--ink-3);
+    text-align: center;
+}
+
+/* ---------- Calendar & study tracker ---------- */
+/* Full outline with a soft tint instead of a thick coloured side stripe. */
+.exam-hero-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: color-mix(in oklch, var(--calm) 9%, var(--surface));
+}
+/* Native <progress>, fully styled (appearance: none). Track on the element, fill via pseudo-elements;
+   WebKit and Firefox pseudo-elements must stay in separate rules or both are dropped. */
+.revision-progress {
+    --progress-bar-radius: 1e5px;
+    appearance: none;
+    border: 0 solid;
+    overflow: clip;
+    display: block;
+    inline-size: 100%;
+    block-size: 8px;
+    margin: 10px 0 6px;
+    border-radius: var(--progress-bar-radius);
+    background: var(--paper-3);
+}
+.revision-progress::-webkit-progress-bar { background: transparent; }
+.revision-progress::-webkit-progress-value {
+    background: var(--ink-2);
+    border-radius: var(--progress-bar-radius);
+    transition: inline-size 0.3s;
+}
+.revision-progress::-moz-progress-bar {
+    background: var(--ink-2);
+    border-radius: var(--progress-bar-radius);
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 760px) {
+    .sidebar { justify-content: space-between; gap: 8px; }
+    .brand { padding: 0; font-size: 1.25rem; }
+    .brand-mark { width: 22px; height: 22px; }
+
+    /* Header actions become icon buttons, so they fit without a hidden scrolling row.
+       The words stay in the page for screen readers. */
+    .sidebar-footer {
+        overflow: visible;
+        mask-image: none;
+        gap: 2px;
+        margin-left: auto;
+    }
+    .sidebar-footer .sidebar-btn,
+    .sidebar-footer .account-link {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+    .sidebar-footer .nav-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    .sidebar-footer .icon { width: 1.3em; height: 1.3em; color: var(--ink-2); }
+
+    /* Bottom tab bar: icon over label */
+    .nav-menu a {
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 4px;
+        font-size: 0.75rem;
+    }
+    .nav-menu a .icon { width: 1.4em; height: 1.4em; }
+    .nav-menu a.active { box-shadow: none; background: var(--paper-3); }
+
+    .main-content,
+    .flow-page .main-content { padding: 24px 16px 112px; }
+
+    /* Today's date block reads left to right on a phone, like everything under it. */
+    .flow-page .top-actions { align-items: flex-start; text-align: left; }
+}

@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
     <title>Account - Cadence</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
@@ -10,27 +13,27 @@
 
     <aside class="sidebar" aria-label="Primary Navigation">
         <div>
-            <div class="brand">Cadence</div>
+            <a class="brand" href="welcome.html" aria-label="Cadence, about the app"><svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true" focusable="false"><rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/><rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/><rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/></svg><span>Cadence</span></a>
             <nav>
                 <ul class="nav-menu">
-                    <li><a href="user_interface.html">Today</a></li>
-                    <li><a href="entries.html">All Entries</a></li>
-                    <li><a href="calendar.html">Calendar</a></li>
-                    <li><a href="insights.html">Insights</a></li>
+                    <li><a href="user_interface.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pen"></use></svg><span class="nav-label">Today</span></a></li>
+                    <li><a href="entries.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span class="nav-label">All Entries</span></a></li>
+                    <li><a href="calendar.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg><span class="nav-label">Calendar</span></a></li>
+                    <li><a href="insights.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wave"></use></svg><span class="nav-label">Insights</span></a></li>
                 </ul>
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg><span class="nav-label">Style &amp; Accessibility</span></button>
-            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Toggle Theme</span></button>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg><span class="nav-label">Display &amp; accessibility</span></button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Light / dark</span></button>
             <a href="account.html" class="account-link session-link active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span class="nav-label">Account</span></a>
-            <a href="sign_up.html" class="account-link signup-link"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign Up</span></a>
+            <a href="sign_up.html" class="account-link signup-link"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign up</span></a>
         </div>
     </aside>
 
-    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Display and accessibility options">
         <h3>
-            <span>Style &amp; Accessibility</span>
+            <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
         </h3>
 
@@ -42,9 +45,9 @@
         </div>
 
         <span class="panel-section-label">Accessibility</span>
-        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-text-size"></use></svg><span class="nav-label">Larger Text Size</span></button>
-        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-contrast"></use></svg><span class="nav-label">High Contrast Mode</span></button>
-        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spacing"></use></svg><span class="nav-label">Wide Letter Spacing</span></button>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-text-size"></use></svg><span class="nav-label">Larger text</span></button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-contrast"></use></svg><span class="nav-label">High contrast</span></button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spacing"></use></svg><span class="nav-label">Wider letter spacing</span></button>
     </div>
 
     <main class="main-content" id="main-content">
@@ -135,7 +138,6 @@
         }
 
         function applySavedPreferences() {
-            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
             const savedFont = localStorage.getItem('selected-font') || 'default';
             setFont(savedFont, true);
 
@@ -151,8 +153,7 @@
         applySavedPreferences();
 
         function toggleDarkMode() {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('dark-mode', isDark);
+            const isDark = cadenceToggleTheme() === 'dark';
             showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 

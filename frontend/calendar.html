@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
     <title>Calendar &amp; Study Tracker - Cadence</title>
     <link rel="stylesheet" href="user_style.css">
     <style>
@@ -53,13 +55,13 @@
 
     <aside class="sidebar" aria-label="Primary Navigation">
         <div>
-            <div class="brand">Cadence</div>
+            <a class="brand" href="welcome.html" aria-label="Cadence, about the app"><svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true" focusable="false"><rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/><rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/><rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/></svg><span>Cadence</span></a>
             <nav>
                 <ul class="nav-menu">
-                    <li><a href="user_interface.html">Today</a></li>
-                    <li><a href="entries.html">All Entries</a></li>
-                    <li><a href="calendar.html" class="active" aria-current="page">Calendar</a></li>
-                    <li><a href="insights.html">Insights</a></li>
+                    <li><a href="user_interface.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pen"></use></svg><span class="nav-label">Today</span></a></li>
+                    <li><a href="entries.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span class="nav-label">All Entries</span></a></li>
+                    <li><a href="calendar.html" class="active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg><span class="nav-label">Calendar</span></a></li>
+                    <li><a href="insights.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wave"></use></svg><span class="nav-label">Insights</span></a></li>
                 </ul>
             </nav>
         </div>
@@ -71,7 +73,7 @@
         </div>
     </aside>
 
-    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Display and accessibility options">
         <h3>
             <span>Display &amp; accessibility</span>
             <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
@@ -395,13 +397,13 @@
 
                 const pct = Math.min(100, Math.round((exam.completedHours / Math.max(1, exam.targetHours)) * 100));
 
-                const barWrap = document.createElement('div');
-                barWrap.className = 'revision-bar-container';
-                const fill = document.createElement('div');
-                fill.className = 'revision-bar-fill';
-                fill.style.width = `${pct}%`;
-                barWrap.appendChild(fill);
-                card.appendChild(barWrap);
+                // Native <progress>: screen readers announce it as a progress bar with its value.
+                const bar = document.createElement('progress');
+                bar.className = 'revision-progress';
+                bar.max = Math.max(1, exam.targetHours);
+                bar.value = Math.min(exam.completedHours, bar.max);
+                bar.setAttribute('aria-label', `${exam.subject}: ${exam.completedHours} of ${exam.targetHours} revision hours`);
+                card.appendChild(bar);
 
                 const bottom = document.createElement('div');
                 bottom.style.display = 'flex';
@@ -526,8 +528,7 @@
         }
 
         function toggleDarkMode() {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('dark-mode', isDark);
+            const isDark = cadenceToggleTheme() === 'dark';
             showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
@@ -554,7 +555,6 @@
         }
 
         function applySavedPreferences() {
-            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
             const savedFont = localStorage.getItem('selected-font') || 'default';
             setFont(savedFont);
 
