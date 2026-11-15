@@ -89,8 +89,8 @@
         <div class="sidebar-footer">
             <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
             <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="account.html" class="account-link">👤 Account / Log In</a>
-            <a href="sign_up.html" class="account-link">✨ Sign Up</a>
+            <a href="account.html" class="account-link session-link">👤 Log In</a>
+            <a href="sign_up.html" class="account-link signup-link">✨ Sign Up</a>
         </div>
     </aside>
 
@@ -139,6 +139,7 @@
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
     <script src="entry_storage.js"></script>
+    <script src="account_nav.js"></script>
     <script>
         function showToast(message) {
             const container = document.getElementById('toast-container');

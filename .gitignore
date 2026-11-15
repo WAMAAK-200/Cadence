@@ -21,6 +21,7 @@ __pycache__/
 *.env
 *.secret
 *.secrets
+.smartdiary.key
 config.local.*
 
 # Private keys, certificates, keystores, and credentials

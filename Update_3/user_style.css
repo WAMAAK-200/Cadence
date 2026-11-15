@@ -144,6 +144,7 @@ body.font-mono button {
 
 .account-link {
     display: block;
+    background-color: #eaeae7;
     padding: 10px 12px;
     border-radius: 6px;
     text-decoration: none;
@@ -155,6 +156,10 @@ body.font-mono button {
 
 .account-link:hover, .account-link.active {
     background-color: #eaeae7;
+}
+
+.account-link[hidden] {
+    display: none;
 }
 
 /* Accessibility & Style Panel Popover */
@@ -708,6 +713,7 @@ body.dark-mode .sidebar-btn {
 
 body.dark-mode .account-link {
     color: #e0e0e0;
+    background-color: #262626;
 }
 
 body.dark-mode .account-link:hover,

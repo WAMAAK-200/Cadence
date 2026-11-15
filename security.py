@@ -5,6 +5,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from input_validation import password_format as password_format_check
 from input_validation import username_format as username_format_check
+from input_validation import email_format as email_format_check
 
 
 class AccountHandler(BaseHTTPRequestHandler):
@@ -74,9 +75,13 @@ class AccountHandler(BaseHTTPRequestHandler):
             "/calendar.html": "calendar.html",
             "/insights.html": "insights.html",
             "/account.html": "account.html",
+            "/login.html": "login.html",
+            "/change_password.html": "change_password.html",
+            "/forgot_password.html": "forgot_password.html",
             "/sign_up.html": "sign_up.html",
             "/user_style.css": "user_style.css",
             "/entry_storage.js": "entry_storage.js",
+            "/account_nav.js": "account_nav.js",
         }
         filename = files.get(self.path)
         if filename is None:
@@ -116,7 +121,8 @@ class AccountHandler(BaseHTTPRequestHandler):
             try:
                 data = self._read_json(6 * 1024 * 1024)
                 entries = data.get("entries") if isinstance(data, dict) else None
-                imported = self.server.account_store.import_entries(account_id, entries)
+                offset = data.get("offset", 0) if isinstance(data, dict) else 0
+                imported = self.server.account_store.import_entries(account_id, entries, offset)
             except OverflowError:
                 self._send_json(413, {"message": "Guest entries are too large to import in one request."})
                 return
@@ -143,7 +149,7 @@ class AccountHandler(BaseHTTPRequestHandler):
             self._send_json(201, {"entry": entry})
             return
 
-        if self.path not in ("/validate-account", "/signup-account", "/login-account"):
+        if self.path not in ("/validate-account", "/validate-email", "/signup-account", "/login-account"):
             self.send_error(404)
             return
 
@@ -158,15 +164,24 @@ class AccountHandler(BaseHTTPRequestHandler):
 
         username = data.get("username") if isinstance(data, dict) else None
         password = data.get("password") if isinstance(data, dict) else None
+        email = data.get("email") if isinstance(data, dict) else None
+        if self.path == "/validate-email":
+            valid_email = email_format_check(email)
+            self._send_json(200, {
+                "valid": valid_email,
+                "message": "Email format is valid." if valid_email else "Enter a valid email address."
+            })
+            return
         username_valid = isinstance(username, str) and username_format_check(username)
         password_valid = password_format_check(password)
-        valid = username_valid and password_valid
+        email_valid = email_format_check(email) if self.path == "/signup-account" else True
+        valid = username_valid and password_valid and email_valid
         created = False
         authenticated = False
 
         if self.path == "/signup-account" and valid:
             try:
-                self.server.account_store.create_account(username, password)
+                self.server.account_store.create_account(username, password, email)
                 message = "Account created successfully. You can now log in."
                 created = True
             except ValueError as error:
@@ -180,7 +195,10 @@ class AccountHandler(BaseHTTPRequestHandler):
                 self.sessions[session_token] = (account_id, time.monotonic() + 8 * 60 * 60)
             message = "Login successful." if authenticated else "Username or password is incorrect."
         elif not valid:
-            message = "Use a 3–32 character username (letters, numbers, underscores) and a password longer than 8 characters with uppercase, lowercase, a number, and punctuation."
+            if self.path == "/signup-account" and not email_valid:
+                message = "Enter a valid email address."
+            else:
+                message = "Use a 3–32 character username, a valid email address, and a password longer than 8 characters with uppercase, lowercase, a number, and punctuation."
         else:
             message = "Username and password formats are valid."
         response = {
@@ -194,6 +212,30 @@ class AccountHandler(BaseHTTPRequestHandler):
         self._send_json(200, response)
 
     def do_PUT(self):
+        if self.path == "/account/password":
+            account_id = self._authenticated_account_id()
+            if account_id is None:
+                self._send_json(401, {"message": "Please log in again."})
+                return
+            try:
+                data = self._read_json(4096)
+                if not isinstance(data, dict):
+                    raise ValueError("Invalid password change request.")
+                changed = self.server.account_store.change_password(
+                    account_id, data.get("current_password"), data.get("new_password")
+                )
+            except OverflowError:
+                self._send_json(413, {"message": "Password change request is too large."})
+                return
+            except (ValueError, json.JSONDecodeError) as error:
+                self._send_json(400, {"message": str(error) or "Invalid password change request."})
+                return
+            if not changed:
+                self._send_json(400, {"message": "Current password is incorrect."})
+                return
+            self._send_json(200, {"message": "Password updated."})
+            return
+
         if not self.path.startswith("/entries/"):
             self.send_error(404)
             return

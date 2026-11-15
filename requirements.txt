@@ -1,2 +1,3 @@
 bcrypt
+cryptography>=45
 # tkinter and sqlite3 are included with Python's standard library.
