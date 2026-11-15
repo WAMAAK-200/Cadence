@@ -21,9 +21,9 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="login.html" class="account-link session-link">👤 Log In</a>
-            <a href="sign_up.html" class="account-link signup-link active" aria-current="page">✨ Sign Up</a>
+            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Toggle Theme</span></button>
+            <a href="login.html" class="account-link session-link"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span class="nav-label">Log In</span></a>
+            <a href="sign_up.html" class="account-link signup-link active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign Up</span></a>
         </div>
     </aside>
 
@@ -57,6 +57,7 @@
     </main>
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+    <script src="icons.js"></script>
     <script src="account_nav.js"></script>
     <script>
         function showToast(message) {
@@ -75,7 +76,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         const signupForm = document.getElementById('signup-form');

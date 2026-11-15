@@ -3,7 +3,11 @@ window.updateAccountNavigation = function updateAccountNavigation() {
         && sessionStorage.getItem('smartdiary_session_expired') !== 'true';
 
     document.querySelectorAll('.session-link').forEach(link => {
-        link.textContent = activeAccountSession ? '👤 Account' : '👤 Log In';
+        // Keep the icon; only the words change.
+        const label = activeAccountSession ? 'Account' : 'Log In';
+        const labelEl = link.querySelector('.nav-label');
+        if (labelEl) labelEl.textContent = label;
+        else link.textContent = label;
         link.href = activeAccountSession ? 'account.html' : 'login.html';
     });
 

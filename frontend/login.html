@@ -21,10 +21,10 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
-            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
-            <a href="login.html" class="account-link session-link active" aria-current="page">👤 Log In</a>
-            <a href="sign_up.html" class="account-link signup-link">✨ Sign Up</a>
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg><span class="nav-label">Style &amp; Accessibility</span></button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Toggle Theme</span></button>
+            <a href="login.html" class="account-link session-link active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span class="nav-label">Log In</span></a>
+            <a href="sign_up.html" class="account-link signup-link"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign Up</span></a>
         </div>
     </aside>
 
@@ -42,9 +42,9 @@
         </div>
 
         <span class="panel-section-label">Accessibility</span>
-        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
-        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
-        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-text-size"></use></svg><span class="nav-label">Larger Text Size</span></button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-contrast"></use></svg><span class="nav-label">High Contrast Mode</span></button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spacing"></use></svg><span class="nav-label">Wide Letter Spacing</span></button>
     </div>
 
     <main class="main-content" id="main-content">
@@ -69,6 +69,7 @@
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
+    <script src="icons.js"></script>
     <script src="entry_storage.js"></script>
     <script src="account_nav.js"></script>
     <script>
@@ -169,7 +170,7 @@
             localStorage.setItem('selected-font', fontType);
             if (!silent) {
                 const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
-                showToast(`✍️ Font switched to ${labels[fontType]}`);
+                showToast(`Font switched to ${labels[fontType]}`);
             }
         }
 
@@ -192,7 +193,7 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
         }
 
         function toggleA11yPanel() {

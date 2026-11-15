@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadence: a diary that plays your week back</title>
+    <meta name="description" content="Check in for ten seconds a day. Cadence turns your week into plain-English patterns and a short piece of music. Built in the North East, for students and anyone juggling a lot.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <style>
+        /* Same tokens as the app (frontend/user_style.css) so the site and product feel like one thing. */
+        :root {
+            --paper: oklch(0.975 0.008 85);
+            --paper-2: oklch(0.952 0.011 85);
+            --paper-3: oklch(0.915 0.013 85);
+            --surface: oklch(0.99 0.005 85);
+            --line: oklch(0.885 0.012 85);
+            --ink: oklch(0.25 0.022 265);
+            --ink-2: oklch(0.42 0.02 265);
+            --ink-3: oklch(0.5 0.016 265);
+            --on-ink: oklch(0.975 0.008 85);
+            --focus: oklch(0.55 0.15 255);
+            --happy: oklch(0.8 0.15 88);
+            --calm: oklch(0.7 0.1 210);
+            --reflective: oklch(0.62 0.12 300);
+            --stressed: oklch(0.62 0.18 32);
+            --ease: cubic-bezier(0.25, 1, 0.5, 1);
+            --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --display: 'Lora', Georgia, serif;
+            --body: 'Hanken Grotesk', 'Segoe UI', system-ui, sans-serif;
+            --gutter: clamp(16px, 4vw, 56px);
+            --max: 1200px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --paper: oklch(0.19 0.014 265);
+                --paper-2: oklch(0.215 0.015 265);
+                --paper-3: oklch(0.27 0.016 265);
+                --surface: oklch(0.235 0.015 265);
+                --line: oklch(0.32 0.015 265);
+                --ink: oklch(0.94 0.01 85);
+                --ink-2: oklch(0.82 0.01 85);
+                --ink-3: oklch(0.72 0.01 85);
+                --on-ink: oklch(0.19 0.014 265);
+                --focus: oklch(0.72 0.13 255);
+                --happy: oklch(0.82 0.14 88);
+                --calm: oklch(0.74 0.1 210);
+                --reflective: oklch(0.72 0.11 300);
+                --stressed: oklch(0.7 0.16 32);
+            }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--body);
+            font-size: 1.0625rem;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: inherit; }
+        :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+        .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+        .skip { position: absolute; left: -999px; top: 8px; background: var(--ink); color: var(--on-ink); padding: 8px 14px; border-radius: 6px; z-index: 10; }
+        .skip:focus { left: 8px; }
+
+        /* ---------- Buttons ---------- */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            min-height: 48px; padding: 0 22px;
+            border-radius: 999px; border: 1.5px solid var(--ink);
+            font: 600 1rem/1 var(--body); text-decoration: none; cursor: pointer;
+            transition: transform 0.2s var(--ease), background-color 0.2s var(--ease), color 0.2s var(--ease);
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: var(--ink); color: var(--on-ink); }
+        .btn-primary:hover { background: color-mix(in oklch, var(--ink) 86%, var(--paper)); }
+        .btn-quiet { background: transparent; color: var(--ink); }
+        .btn-quiet:hover { background: var(--paper-2); }
+        .btn-link { border: 0; padding: 0; min-height: 44px; background: none; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; font-weight: 600; }
+
+        /* ---------- Nav ---------- */
+        .nav { position: sticky; top: 0; z-index: 5; background: color-mix(in oklch, var(--paper) 92%, transparent); backdrop-filter: saturate(1.2) blur(8px); border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+        .nav.is-scrolled { border-bottom-color: var(--line); }
+        .nav-inner { display: flex; align-items: center; gap: 28px; min-height: 68px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; font: 600 1.375rem/1 var(--display); text-decoration: none; letter-spacing: -0.01em; }
+        .brand svg { width: 26px; height: 26px; }
+        .nav-links { display: flex; gap: 24px; margin-left: auto; list-style: none; padding: 0; margin-top: 0; margin-bottom: 0; }
+        .nav-links a { text-decoration: none; font-weight: 500; color: var(--ink-2); font-size: 0.9375rem; }
+        .nav-links a:hover { color: var(--ink); }
+        .nav .btn { min-height: 42px; padding: 0 18px; font-size: 0.9375rem; }
+        @media (max-width: 860px) { .nav-links { display: none; } .nav .btn { margin-left: auto; } }
+
+        /* ---------- Hero ---------- */
+        .hero { padding: clamp(40px, 8vw, 104px) 0 0; }
+        .eyebrow { font: 600 0.8125rem/1.2 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 20px; }
+        .hero h1 {
+            font: 500 clamp(2.75rem, 7.4vw, 6.25rem)/0.98 var(--display);
+            letter-spacing: -0.025em;
+            margin: 0;
+            max-width: 13ch;
+            text-wrap: balance;
+        }
+        .hero h1 em { font-style: italic; font-weight: 400; }
+        .hero-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: end; margin-top: clamp(28px, 4vw, 44px); }
+        .hero-lede { font-size: clamp(1.0625rem, 1.4vw, 1.25rem); color: var(--ink-2); max-width: 46ch; margin: 0; }
+        .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+        @media (max-width: 760px) { .hero-foot { grid-template-columns: 1fr; } }
+
+        /* ---------- The score (example week) ---------- */
+        .score-section { margin-top: clamp(40px, 6vw, 72px); }
+        .score {
+            position: relative;
+            border-top: 1px solid var(--ink);
+            border-bottom: 1px solid var(--ink);
+            padding: 18px 0 14px;
+        }
+        .score-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-bottom: 14px; }
+        .score-title { font: italic 500 1.25rem/1.2 var(--display); margin: 0; }
+        .score-tag { font-size: 0.8125rem; color: var(--ink-3); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+        .score-controls { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+        .play {
+            display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 20px 0 14px;
+            border-radius: 999px; border: 0; background: var(--ink); color: var(--on-ink);
+            font: 600 1rem/1 var(--body); cursor: pointer;
+        }
+        .play-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--on-ink); display: grid; place-items: center; }
+        .play-icon::before { content: ""; border-left: 8px solid var(--ink); border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+        .play[aria-pressed="true"] .play-icon::before { border: 0; width: 8px; height: 8px; background: var(--ink); margin: 0; border-radius: 1px; }
+        .play:disabled { opacity: 0.5; cursor: not-allowed; }
+        .score-status { font-size: 0.875rem; color: var(--ink-3); min-height: 1.4em; margin: 0; }
+
+        .bars {
+            position: relative;
+            display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+            /* five stave lines across the lane */
+            background:
+                repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--lane) / 5 - 1px), var(--line) calc(var(--lane) / 5 - 1px), var(--line) calc(var(--lane) / 5)) 0 34px / 100% var(--lane) no-repeat;
+            --lane: clamp(180px, 26vw, 300px);
+        }
+        .day {
+            position: relative;
+            display: grid; grid-template-rows: 34px var(--lane) auto;
+            justify-items: center;
+            border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: 0 0 6px;
+            border-left: 1px solid var(--ink);   /* bar line */
+            border-radius: 0;
+        }
+        .day:last-child { border-right: 1px solid var(--ink); }
+        .day:hover .day-name { color: var(--ink); }
+        .day-name { font-weight: 600; font-size: 0.875rem; color: var(--ink-3); align-self: center; letter-spacing: 0.02em; }
+        .lane { position: relative; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+        .stem {
+            --h: 50%;
+            width: clamp(18px, 3.4vw, 40px);
+            height: var(--h);
+            background: var(--mood);
+            border-radius: 999px 999px 4px 4px;
+            transform-origin: bottom;
+            transition: height 0.5s var(--ease-expo), background-color 0.3s var(--ease);
+        }
+        .stem.tense {
+            background-image: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in oklch, var(--ink) 28%, transparent) 6px 8px);
+        }
+        .dots { display: flex; gap: 4px; height: 14px; align-items: center; margin-top: 10px; }
+        .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-2); }
+        .mood-word { font-size: 0.8125rem; color: var(--ink-2); margin-top: 4px; }
+        .day[data-mood="happy"] { --mood: var(--happy); }
+        .day[data-mood="calm"] { --mood: var(--calm); }
+        .day[data-mood="reflective"] { --mood: var(--reflective); }
+        .day[data-mood="stressed"] { --mood: var(--stressed); }
+        .day.is-on .stem { box-shadow: 0 0 0 4px color-mix(in oklch, var(--mood) 35%, transparent); }
+
+        .playhead {
+            position: absolute; top: 34px; height: var(--lane); width: 2px; left: 0;
+            background: var(--ink); opacity: 0; pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .playhead.is-on { opacity: 1; }
+
+        .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 16px 0 0; padding: 0; list-style: none; font-size: 0.875rem; color: var(--ink-2); }
+        .legend li { display: inline-flex; align-items: center; gap: 8px; }
+        .sw { display: inline-block; width: 12px; height: 18px; border-radius: 999px 999px 2px 2px; background: var(--calm); }
+        .sw.tense { background-color: var(--stressed); background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in oklch, var(--ink) 35%, transparent) 3px 4px); }
+        .sw.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-2); }
+        .hint { font-size: 0.875rem; color: var(--ink-3); margin: 10px 0 0; }
+
+        @media (max-width: 560px) {
+            .score-controls { margin-left: 0; width: 100%; }
+            .day-name { font-size: 0.75rem; }
+            .mood-word { font-size: 0.6875rem; }
+        }
+
+        /* ---------- Sections ---------- */
+        section.block { padding: clamp(72px, 11vw, 144px) 0 0; }
+        .kicker { font: 600 0.8125rem/1.2 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 14px; }
+        h2 {
+            font: 500 clamp(2rem, 4.4vw, 3.5rem)/1.04 var(--display);
+            letter-spacing: -0.02em; margin: 0; max-width: 18ch; text-wrap: balance;
+        }
+        h2 em { font-style: italic; font-weight: 400; }
+        .section-lede { color: var(--ink-2); max-width: 52ch; margin: 18px 0 0; font-size: 1.125rem; }
+
+        /* Steps: a numbered score, not cards */
+        .steps { list-style: none; padding: 0; margin: clamp(36px, 5vw, 56px) 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); }
+        .steps li { padding: 22px 28px 0 0; position: relative; }
+        .steps li + li { padding-left: 28px; border-left: 1px solid var(--line); }
+        .step-n { font: italic 500 3rem/1 var(--display); color: var(--ink-3); }
+        .steps h3 { font: 600 1.25rem/1.3 var(--body); margin: 16px 0 8px; }
+        .steps p { margin: 0; color: var(--ink-2); }
+        .steps .quote { display: block; margin-top: 14px; font: italic 1.125rem/1.4 var(--display); color: var(--ink); }
+        @media (max-width: 760px) {
+            .steps { grid-template-columns: 1fr; }
+            .steps li, .steps li + li { padding: 22px 0 26px; border-left: 0; border-bottom: 1px solid var(--line); }
+        }
+
+        /* Mapping rows */
+        .mapping { margin: clamp(36px, 5vw, 56px) 0 0; border-top: 1px solid var(--ink); }
+        .map-row {
+            display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) minmax(0, 2.4fr) auto;
+            gap: 12px 28px; align-items: center;
+            padding: 22px 0; border-bottom: 1px solid var(--line);
+        }
+        .map-from { font: 600 1.125rem/1.2 var(--body); }
+        .map-to { font: italic 500 1.5rem/1.1 var(--display); }
+        .map-to::before { content: "→ "; font-style: normal; color: var(--ink-3); font-size: 1.125rem; }
+        .map-desc { color: var(--ink-2); margin: 0; }
+        .hear { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); font: 600 0.9375rem/1 var(--body); cursor: pointer; white-space: nowrap; }
+        .hear:hover { background: var(--paper-2); }
+        .hear[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+        @media (max-width: 760px) {
+            .map-row { grid-template-columns: 1fr auto; }
+            .map-desc { grid-column: 1 / -1; }
+            .map-to { grid-column: 1; }
+            .hear { grid-row: 1 / span 2; grid-column: 2; }
+        }
+
+        /* Dialect translation */
+        .translate { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(28px, 6vw, 88px); align-items: center; }
+        .said {
+            font: italic 400 clamp(1.75rem, 3.6vw, 2.75rem)/1.2 var(--display);
+            margin: 0; letter-spacing: -0.01em; text-wrap: balance;
+        }
+        .said mark { background: linear-gradient(transparent 62%, color-mix(in oklch, var(--happy) 55%, transparent) 62%); color: inherit; padding: 0 2px; }
+        .heard { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--ink); }
+        .heard li { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .heard span:first-child { color: var(--ink-2); }
+        .heard strong { font-weight: 600; }
+        .note-small { font-size: 0.875rem; color: var(--ink-3); margin: 14px 0 0; }
+        @media (max-width: 860px) { .translate { grid-template-columns: 1fr; } }
+
+        /* Insight pull quote */
+        .insight { margin: clamp(36px, 5vw, 56px) 0 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: clamp(28px, 6vw, 88px); align-items: start; }
+        .insight blockquote { margin: 0; font: 400 clamp(1.5rem, 2.8vw, 2.25rem)/1.3 var(--display); text-wrap: pretty; }
+        .insight blockquote::before { content: "“"; display: block; font-size: 4rem; line-height: 0.6; color: var(--ink-3); margin-bottom: 12px; }
+        .insight-meta { border-top: 1px solid var(--ink); padding-top: 16px; color: var(--ink-2); }
+        .insight-meta p { margin: 0 0 12px; }
+        .tagline { display: inline-block; font-size: 0.8125rem; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--ink-3); }
+        @media (max-width: 860px) { .insight { grid-template-columns: 1fr; } }
+
+        /* Who it's for */
+        .modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: clamp(36px, 5vw, 56px) 0 0; border-top: 1px solid var(--ink); }
+        .mode { padding: 24px 28px 0 0; }
+        .mode + .mode { padding-left: 28px; border-left: 1px solid var(--line); }
+        .mode h3 { font: italic 500 1.75rem/1.1 var(--display); margin: 0 0 10px; }
+        .mode p { margin: 0 0 12px; color: var(--ink-2); }
+        .mode ul { margin: 0; padding: 0; list-style: none; font-size: 0.9375rem; }
+        .mode li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+        @media (max-width: 860px) {
+            .modes { grid-template-columns: 1fr; }
+            .mode, .mode + .mode { padding: 24px 0; border-left: 0; border-bottom: 1px solid var(--line); }
+        }
+
+        /* Principles */
+        .principles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 clamp(28px, 6vw, 88px); margin: clamp(36px, 5vw, 56px) 0 0; list-style: none; padding: 0; }
+        .principles li { padding: 22px 0; border-top: 1px solid var(--line); }
+        .principles h3 { font: 600 1.125rem/1.3 var(--body); margin: 0 0 6px; }
+        .principles p { margin: 0; color: var(--ink-2); }
+        @media (max-width: 760px) { .principles { grid-template-columns: 1fr; } }
+
+        .support-line {
+            margin: 36px 0 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+            display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline;
+        }
+        .support-line strong { font-weight: 600; }
+        .support-line a { font-weight: 600; }
+
+        /* Final call */
+        .finale { padding: clamp(88px, 13vw, 176px) 0 clamp(64px, 9vw, 112px); }
+        .finale h2 { font-size: clamp(2.5rem, 6.6vw, 5.5rem); max-width: 14ch; }
+        .finale .hero-ctas { margin-top: 32px; }
+
+        footer { border-top: 1px solid var(--ink); padding: 28px 0 40px; font-size: 0.9375rem; color: var(--ink-2); }
+        .foot { display: flex; flex-wrap: wrap; gap: 14px 32px; align-items: baseline; }
+        .foot nav { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-left: auto; }
+        .foot a { text-decoration: none; }
+        .foot a:hover { text-decoration: underline; }
+        .foot small { flex-basis: 100%; color: var(--ink-3); font-size: 0.8125rem; }
+
+        /* ---------- Motion ---------- */
+        .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.7s var(--ease-expo), transform 0.7s var(--ease-expo); }
+        .reveal.is-in { opacity: 1; transform: none; }
+        .no-js .reveal { opacity: 1; transform: none; }
+        @keyframes rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+        .bars.is-in .stem { animation: rise 0.9s var(--ease-expo) both; animation-delay: calc(var(--i) * 70ms + 150ms); }
+        @media (prefers-reduced-motion: no-preference) {
+            body:not(.no-js) .bars:not(.is-in) .stem { transform: scaleY(0); }   /* hidden until they rise */
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .reveal { opacity: 1; transform: none; transition: none; }
+            .bars.is-in .stem { animation: none; }
+            .stem { transition: none; }
+        }
+    </style>
+</head>
+<body class="no-js">
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="nav" id="nav">
+        <div class="wrap nav-inner">
+            <a class="brand" href="#top" aria-label="Cadence, home">
+                <svg viewBox="0 0 26 26" aria-hidden="true">
+                    <rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/>
+                    <rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/>
+                    <rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/>
+                </svg>
+                Cadence
+            </a>
+            <ul class="nav-links">
+                <li><a href="#how">How it works</a></li>
+                <li><a href="#music">The music</a></li>
+                <li><a href="#who">Who it&rsquo;s for</a></li>
+                <li><a href="#honest">Privacy &amp; care</a></li>
+            </ul>
+            <a class="btn btn-primary" href="user_interface.html">Open the diary</a>
+        </div>
+    </header>
+
+    <main id="main">
+        <!-- Hero -->
+        <div class="hero" id="top">
+            <div class="wrap">
+                <p class="eyebrow reveal">A diary from the North East</p>
+                <h1 class="reveal">Hear how your week <em>really</em> went.</h1>
+                <div class="hero-foot reveal">
+                    <p class="hero-lede">Check in for ten seconds a day. Cadence picks out your mood, sleep, stress and study hours, shows the patterns in plain English, and plays your week back as a short piece of music.</p>
+                    <div class="hero-ctas">
+                        <a class="btn btn-primary" href="user_interface.html">Start a check-in</a>
+                        <a class="btn btn-quiet" href="sign_up.html">Make an account</a>
+                    </div>
+                </div>
+
+                <!-- The example week. Every mark below is example data, not a real person's. -->
+                <div class="score-section reveal">
+                    <div class="score">
+                        <div class="score-head">
+                            <p class="score-title">An exam week, as a score</p>
+                            <span class="score-tag">Example data</span>
+                            <div class="score-controls">
+                                <button type="button" class="play" id="playBtn" aria-pressed="false">
+                                    <span class="play-icon" aria-hidden="true"></span><span id="playLabel">Play this week</span>
+                                </button>
+                                <p class="score-status" id="scoreStatus" role="status" aria-live="polite"></p>
+                            </div>
+                        </div>
+                        <div class="bars" id="bars" role="group" aria-label="Example week, Monday to Sunday. Select a day to change its mood.">
+                            <span class="playhead" id="playhead" aria-hidden="true"></span>
+                        </div>
+                    </div>
+                    <ul class="legend" aria-label="How to read the score">
+                        <li><span class="sw" aria-hidden="true"></span>Colour and word: mood</li>
+                        <li><span class="sw" style="height:12px" aria-hidden="true"></span>Height: hours slept</li>
+                        <li><span class="sw tense" aria-hidden="true"></span>Stripes: stress of 7 or more</li>
+                        <li><span class="sw dot" aria-hidden="true"></span>Dots: study or work hours</li>
+                    </ul>
+                    <p class="hint">Tap a day to change its mood, then play it again. Nothing plays until you press Play.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- How it works -->
+        <section class="block" id="how" aria-labelledby="how-title">
+            <div class="wrap">
+                <p class="kicker reveal">How it works</p>
+                <h2 id="how-title" class="reveal">Seconds a day, <em>not</em> another chore.</h2>
+                <ol class="steps reveal">
+                    <li>
+                        <span class="step-n" aria-hidden="true">1</span>
+                        <h3>Say how you are</h3>
+                        <p>Pick a mood, or skip it. One thumb, no forms.</p>
+                        <span class="quote">&ldquo;How are you, really?&rdquo;</span>
+                    </li>
+                    <li>
+                        <span class="step-n" aria-hidden="true">2</span>
+                        <h3>Get a note back</h3>
+                        <p>A short, gentle reply that fits the mood you picked, with a breathing pause if you want one.</p>
+                        <span class="quote">&ldquo;Want to take a minute first?&rdquo;</span>
+                    </li>
+                    <li>
+                        <span class="step-n" aria-hidden="true">3</span>
+                        <h3>Write, or talk, if you like</h3>
+                        <p>Type a few lines or use your voice. Cadence suggests the details from your words, and you check them before anything is saved.</p>
+                        <span class="quote">&ldquo;Help fill this in&rdquo;</span>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- Dialect -->
+        <section class="block" aria-labelledby="dialect-title">
+            <div class="wrap">
+                <p class="kicker reveal">Talk like you talk</p>
+                <h2 id="dialect-title" class="reveal">It understands <em>proper knackered.</em></h2>
+                <p class="section-lede reveal">Cadence is built in the North East, so it listens for the way people round here actually describe a day, and turns it into something you can track.</p>
+                <div class="translate reveal" style="margin-top: clamp(36px, 5vw, 56px)">
+                    <p class="said">&ldquo;Slept <mark>canny well</mark> for once, but I was <mark>proper knackered</mark> by four after six hours in the library.&rdquo;</p>
+                    <div>
+                        <ul class="heard" aria-label="What Cadence suggests from that sentence">
+                            <li><span>Sleep quality</span><strong>Good</strong></li>
+                            <li><span>Tiredness</span><strong>High</strong></li>
+                            <li><span>Study</span><strong>6 hours</strong></li>
+                        </ul>
+                        <p class="note-small">An example. Suggestions are always labelled, and nothing is saved until you&rsquo;ve looked at it.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The music -->
+        <section class="block" id="music" aria-labelledby="music-title">
+            <div class="wrap">
+                <p class="kicker reveal">The weekly composition</p>
+                <h2 id="music-title" class="reveal">Your data, played <em>back to you.</em></h2>
+                <p class="section-lede reveal">Once a week, the days you wrote become a short piece of music. A calm week sounds calm. An exam week sounds like an exam week. Press a button to hear each idea.</p>
+                <div class="mapping reveal" id="mapping">
+                    <div class="map-row">
+                        <span class="map-from">Mood</span>
+                        <span class="map-to">Key</span>
+                        <p class="map-desc">Brighter moods play in a major key; harder weeks move into minor and modal colours.</p>
+                        <button type="button" class="hear" data-demo="mood" aria-pressed="false">Hear it</button>
+                    </div>
+                    <div class="map-row">
+                        <span class="map-from">Sleep</span>
+                        <span class="map-to">Tempo</span>
+                        <p class="map-desc">Good nights give an unhurried tempo. Short nights speed everything up.</p>
+                        <button type="button" class="hear" data-demo="sleep" aria-pressed="false">Hear it</button>
+                    </div>
+                    <div class="map-row">
+                        <span class="map-from">Stress</span>
+                        <span class="map-to">Tension</span>
+                        <p class="map-desc">Low stress stays smooth. High stress adds an edge you can hear.</p>
+                        <button type="button" class="hear" data-demo="stress" aria-pressed="false">Hear it</button>
+                    </div>
+                    <div class="map-row">
+                        <span class="map-from">Study &amp; work</span>
+                        <span class="map-to">Rhythm</span>
+                        <p class="map-desc">Light days are sparse. Long library days get busy.</p>
+                        <button type="button" class="hear" data-demo="rhythm" aria-pressed="false">Hear it</button>
+                    </div>
+                </div>
+                <p class="note-small reveal" id="audioNote"></p>
+            </div>
+        </section>
+
+        <!-- Insights -->
+        <section class="block" aria-labelledby="insight-title">
+            <div class="wrap">
+                <p class="kicker reveal">Patterns, in plain English</p>
+                <h2 id="insight-title" class="reveal">What your own week <em>is telling you.</em></h2>
+                <div class="insight reveal">
+                    <blockquote>After nights under six hours, your stress the next day tends to be higher. It might be worth protecting sleep in the week before your exams.</blockquote>
+                    <div class="insight-meta">
+                        <p><span class="tagline">Example insight</span></p>
+                        <p>The pattern is worked out in code from what you logged. The wording explains it. If there isn&rsquo;t enough data yet, Cadence says so rather than guessing.</p>
+                        <p>Students can add exam dates, so advice shifts from building habits early in term, to protecting sleep before exams, to recovering after.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Who it's for -->
+        <section class="block" id="who" aria-labelledby="who-title">
+            <div class="wrap">
+                <p class="kicker reveal">Who it&rsquo;s for</p>
+                <h2 id="who-title" class="reveal">Whatever your week <em>looks like.</em></h2>
+                <div class="modes reveal">
+                    <div class="mode">
+                        <h3>Students</h3>
+                        <p>For getting through term and exam season without running on empty.</p>
+                        <ul><li>Exam calendar and countdown</li><li>Revision hours against your targets</li><li>Advice that changes with the time of term</li></ul>
+                    </div>
+                    <div class="mode">
+                        <h3>Working</h3>
+                        <p>For shifts, long days and keeping an eye on how work is landing.</p>
+                        <ul><li>Work hours and tiredness over time</li><li>Pacing patterns across the week</li><li>A summary you can bring to a conversation about adjustments</li></ul>
+                    </div>
+                    <div class="mode">
+                        <h3>Between things</h3>
+                        <p>For recovery, job hunting, or a stretch that&rsquo;s just hard.</p>
+                        <ul><li>Energy and rest, logged gently</li><li>No streaks and no nagging about missed days</li><li>Signposts to support when you need them</li></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Honest by design -->
+        <section class="block" id="honest" aria-labelledby="honest-title">
+            <div class="wrap">
+                <p class="kicker reveal">Privacy &amp; care</p>
+                <h2 id="honest-title" class="reveal">Honest about what it is, <em>gentle on hard days.</em></h2>
+                <ul class="principles reveal">
+                    <li><h3>Wellbeing support, not therapy</h3><p>Cadence never diagnoses or scores you. It shows what you logged and points to real help when it matters.</p></li>
+                    <li><h3>Your words stay yours</h3><p>Entries are encrypted. Without an account they stay on your device, and you can delete them whenever you like.</p></li>
+                    <li><h3>Clear about the machine</h3><p>AI suggestions are labelled. Without a connection to the AI service, a simpler offline helper takes over, and it says so.</p></li>
+                    <li><h3>No guilt mechanics</h3><p>Missed a week? Nothing breaks and nothing nags. Days you didn&rsquo;t write are left empty, never filled in.</p></li>
+                </ul>
+                <p class="support-line reveal"><strong>Having a really hard time?</strong> <span>Samaritans are free, any time, on <a href="tel:116123">116 123</a>. In immediate danger, call <a href="tel:999">999</a>.</span></p>
+            </div>
+        </section>
+
+        <!-- Final call -->
+        <section class="finale" aria-labelledby="finale-title">
+            <div class="wrap">
+                <h2 id="finale-title" class="reveal">Start tonight. It takes <em>ten seconds.</em></h2>
+                <div class="hero-ctas reveal">
+                    <a class="btn btn-primary" href="user_interface.html">Start a check-in</a>
+                    <a class="btn btn-quiet" href="login.html">Log in</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="wrap foot">
+            <a class="brand" href="#top" aria-label="Cadence, back to top" style="font-size:1.125rem">Cadence</a>
+            <nav aria-label="Footer">
+                <a href="user_interface.html">Today</a>
+                <a href="insights.html">Insights</a>
+                <a href="sign_up.html">Sign up</a>
+                <a href="login.html">Log in</a>
+            </nav>
+            <small>Made at DurHack 2026 in the North East. Cadence is wellbeing support, not a medical service.</small>
+        </div>
+    </footer>
+
+    <script src="music_synth.js"></script>
+    <script>
+        document.body.classList.remove('no-js');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ---- Nav border once scrolled ----
+        const nav = document.getElementById('nav');
+        const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 8);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+
+        // ---- Reveal on scroll ----
+        const revealables = document.querySelectorAll('.reveal');
+        if ('IntersectionObserver' in window && !reduceMotion) {
+            const io = new IntersectionObserver(items => items.forEach(item => {
+                if (item.isIntersecting) { item.target.classList.add('is-in'); io.unobserve(item.target); }
+            }), { rootMargin: '0px 0px -8% 0px' });
+            revealables.forEach(el => io.observe(el));
+        } else {
+            revealables.forEach(el => el.classList.add('is-in'));
+        }
+
+        // ---- The example week (made-up data, clearly labelled on the page) ----
+        const MOODS = ['happy', 'calm', 'reflective', 'stressed'];
+        const LABEL = { happy: 'Happy', calm: 'Calm', reflective: 'Reflective', stressed: 'Stressed' };
+        const week = [
+            { name: 'Mon', full: 'Monday',    mood: 'calm',       sleep: 7.5, stress: 4, hours: 5 },
+            { name: 'Tue', full: 'Tuesday',   mood: 'reflective', sleep: 6.5, stress: 5, hours: 6 },
+            { name: 'Wed', full: 'Wednesday', mood: 'stressed',   sleep: 5,   stress: 8, hours: 8 },
+            { name: 'Thu', full: 'Thursday',  mood: 'stressed',   sleep: 4.5, stress: 8, hours: 9 },
+            { name: 'Fri', full: 'Friday',    mood: 'calm',       sleep: 7,   stress: 5, hours: 4 },
+            { name: 'Sat', full: 'Saturday',  mood: 'happy',      sleep: 9,   stress: 2, hours: 1 },
+            { name: 'Sun', full: 'Sunday',    mood: 'happy',      sleep: 8.5, stress: 3, hours: 2 }
+        ];
+        const bars = document.getElementById('bars');
+        const playhead = document.getElementById('playhead');
+
+        function describe(d) {
+            return `${d.full}: ${LABEL[d.mood]}, slept ${d.sleep} hours, stress ${d.stress} out of 10, ${d.hours} hours of study. Select to change the mood.`;
+        }
+
+        week.forEach((d, i) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'day';
+            btn.dataset.mood = d.mood;
+            btn.setAttribute('aria-label', describe(d));
+            btn.innerHTML = `
+                <span class="day-name" aria-hidden="true">${d.name}</span>
+                <span class="lane" aria-hidden="true"><span class="stem${d.stress >= 7 ? ' tense' : ''}" style="--h:${Math.round(18 + (d.sleep / 10) * 78)}%; --i:${i}"></span></span>
+                <span aria-hidden="true">
+                    <span class="dots">${'<i></i>'.repeat(d.hours < 2 ? 1 : d.hours < 5 ? 2 : 3)}</span>
+                    <span class="mood-word">${LABEL[d.mood]}</span>
+                </span>`;
+            btn.addEventListener('click', () => {
+                d.mood = MOODS[(MOODS.indexOf(d.mood) + 1) % MOODS.length];
+                btn.dataset.mood = d.mood;
+                btn.querySelector('.mood-word').textContent = LABEL[d.mood];
+                btn.setAttribute('aria-label', describe(d));
+                setStatus(`${d.full} is now ${LABEL[d.mood].toLowerCase()}.`);
+                const notes = { happy: 523.25, calm: 440, reflective: 349.23, stressed: 311.13 };
+                if (synthReady && !synth.isPlaying) synth.playTone(notes[d.mood], 0.35, 'sine', d.mood === 'stressed' ? 0.4 : 0);
+            });
+            bars.appendChild(btn);
+        });
+
+        // Bars rise once the score scrolls into view.
+        if (!reduceMotion && 'IntersectionObserver' in window) {
+            const barIO = new IntersectionObserver(items => {
+                if (items[0].isIntersecting) { bars.classList.add('is-in'); barIO.disconnect(); }
+            }, { threshold: 0.3 });
+            barIO.observe(bars);
+        }
+
+        // ---- Sound: uses the app's own music_synth.js; never starts without a click ----
+        const synth = window.SmartDiaryMusicSynth;
+        const synthReady = Boolean(synth && (window.AudioContext || window.webkitAudioContext));
+        const playBtn = document.getElementById('playBtn');
+        const playLabel = document.getElementById('playLabel');
+        const statusEl = document.getElementById('scoreStatus');
+        function setStatus(t) { statusEl.textContent = t; }
+
+        function setPlaying(on) {
+            playBtn.setAttribute('aria-pressed', String(on));
+            playLabel.textContent = on ? 'Stop' : 'Play this week';
+            playhead.classList.toggle('is-on', on);
+            if (!on) {
+                playhead.style.left = '0';
+                bars.querySelectorAll('.day.is-on').forEach(b => b.classList.remove('is-on'));
+            }
+        }
+
+        if (!synthReady) {
+            playBtn.disabled = true;
+            setStatus("Sound isn't available in this browser, but you can still read the score.");
+            document.querySelectorAll('.hear').forEach(b => { b.disabled = true; });
+            document.getElementById('audioNote').textContent = "Sound isn't available in this browser.";
+        }
+
+        let demoTimers = [];
+        function stopDemos() {
+            demoTimers.forEach(clearTimeout);
+            demoTimers = [];
+            document.querySelectorAll('.hear[aria-pressed="true"]').forEach(b => { b.setAttribute('aria-pressed', 'false'); b.textContent = 'Hear it'; });
+        }
+
+        playBtn.addEventListener('click', async () => {
+            if (!synthReady) return;
+            if (synth.isPlaying) { synth.stop(); return; }
+            stopDemos();
+            try {
+                synth.initAudio();
+                await synth.audioCtx.resume();
+                if (synth.audioCtx.state !== 'running') throw new Error('the browser did not allow audio to start');
+                let finished = false;
+                const entries = week.map(d => ({ mood: d.mood, sleepHours: d.sleep, stress: d.stress, studyHours: d.hours }));
+                const params = synth.playWeeklyComposition(entries, null,
+                    (step, total) => {
+                        const pos = (step + 1) / total;
+                        const width = bars.clientWidth;
+                        playhead.style.left = `${Math.min(width - 2, pos * width)}px`;
+                        const dayIndex = Math.min(6, Math.floor(pos * 7 - 1e-6));
+                        bars.querySelectorAll('.day').forEach((b, i) => b.classList.toggle('is-on', i === dayIndex));
+                        if (step >= total - 1) finished = true;
+                    },
+                    () => {
+                        setPlaying(false);
+                        setStatus(finished ? 'That was the week. Change a day and play it again.' : 'Stopped.');
+                    });
+                setPlaying(true);
+                setStatus(`${params.scaleName.split(' (')[0]}, ${params.bpm} BPM`);
+            } catch (e) {
+                setPlaying(false);
+                setStatus(`Couldn't play: ${e.message}.`);
+            }
+        });
+
+        // ---- "Hear it" demos: two short contrasting phrases each ----
+        const DEMOS = {
+            // [frequency, start (s), length (s), wave, dissonance]
+            mood: [[261.63,0,.4],[329.63,.25,.4],[392,.5,.6],  [220,1.4,.4],[261.63,1.65,.4],[329.63,1.9,.6]],
+            sleep: [[293.66,0,.5],[349.23,.55,.5],[440,1.1,.6],  [293.66,2,.22],[349.23,2.2,.22],[440,2.4,.22],[349.23,2.6,.22],[293.66,2.8,.3]],
+            stress: [[329.63,0,.9,'sine',0],  [329.63,1.2,.9,'triangle',.7]],
+            rhythm: [[392,0,.6],[392,.8,.6],  [392,1.8,.14],[440,1.95,.14],[494,2.1,.14],[440,2.25,.14],[392,2.4,.14],[440,2.55,.14],[494,2.7,.14],[587,2.85,.3]]
+        };
+        document.querySelectorAll('.hear').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!synthReady) return;
+                const wasOn = btn.getAttribute('aria-pressed') === 'true';
+                stopDemos();
+                if (wasOn) return;
+                if (synth.isPlaying) synth.stop();
+                synth.initAudio();
+                await synth.audioCtx.resume();
+                btn.setAttribute('aria-pressed', 'true');
+                btn.textContent = 'Playing…';
+                const notes = DEMOS[btn.dataset.demo];
+                notes.forEach(([f, t, len, wave = 'sine', dis = 0]) => {
+                    demoTimers.push(setTimeout(() => synth.playTone(f, len, wave, dis), t * 1000));
+                });
+                const end = Math.max(...notes.map(n => n[1] + n[2]));
+                demoTimers.push(setTimeout(stopDemos, (end + 0.2) * 1000));
+            });
+        });
+        document.getElementById('audioNote').textContent ||= 'Each button plays the gentle version first, then the other one.';
+    </script>
+</body>
+</html>
