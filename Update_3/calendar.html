@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Calendar - Smart Diary</title>
+    <link rel="stylesheet" href="user_style.css">
+    <style>
+        .calendar-preview-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #e6e6e3;
+        }
+        .preview-heading {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1a1a1a;
+        }
+        .day-entry-card {
+            background: #ffffff;
+            border: 1px solid #e6e6e3;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .day-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .day-entry-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .empty-day-message {
+            color: #777;
+            font-style: italic;
+            font-size: 14px;
+        }
+        .btn-delete {
+            background: transparent;
+            border: 1px solid #e0b4b4;
+            color: #b91c1c;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background-color 0.15s;
+        }
+        .btn-delete:hover {
+            background: #fee2e2;
+        }
+        body.dark-mode .day-entry-card {
+            background: #1a1a1a;
+            border-color: #262626;
+        }
+        body.dark-mode .day-entry-title,
+        body.dark-mode .preview-heading {
+            color: #ffffff;
+        }
+        body.dark-mode .btn-delete {
+            border-color: #7f1d1d;
+            color: #fca5a5;
+        }
+        body.dark-mode .btn-delete:hover {
+            background: #450a0a;
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <aside class="sidebar" aria-label="Primary Navigation">
+        <div>
+            <div class="brand">Smart Diary</div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html">Today</a></li>
+                    <li><a href="entries.html">All Entries</a></li>
+                    <li><a href="calendar.html" class="active" aria-current="page">Calendar</a></li>
+                    <li><a href="insights.html">Insights</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()">♿ Style &amp; Accessibility</button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
+            <a href="account.html" class="account-link session-link">👤 Log In</a>
+            <a href="sign_up.html" class="account-link signup-link">✨ Sign Up</a>
+        </div>
+    </aside>
+
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Style and Accessibility Options">
+        <h3>
+            <span>Style &amp; Accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
+        </div>
+
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')">🔍 Larger Text Size</button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')">🌗 High Contrast Mode</button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')">📖 Wide Letter Spacing</button>
+    </div>
+
+    <main class="main-content" id="main-content">
+        <div class="calendar-controls">
+            <h1 class="date-heading" id="month-year" aria-live="polite"></h1>
+            <div>
+                <button id="prev-month" aria-label="Previous month">&lt; Prev</button>
+                <button id="next-month" aria-label="Next month">Next &gt;</button>
+            </div>
+        </div>
+
+        <div class="calendar-weekdays" aria-hidden="true">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+
+        <div class="calendar-days" id="calendar-days" role="grid" aria-label="Monthly calendar"></div>
+
+        <section class="calendar-preview-section" aria-labelledby="preview-heading">
+            <h2 id="preview-heading" class="preview-heading">Select a date above</h2>
+            <div id="selected-date-entries" aria-live="polite">
+                <p class="empty-day-message">Click on any calendar day to view entries written on that day.</p>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="entry_storage.js"></script>
+    <script src="account_nav.js"></script>
+    <script>
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function setFont(fontType, silent = false) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+
+            localStorage.setItem('selected-font', fontType);
+            if (!silent) {
+                const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
+                showToast(`✍️ Font switched to ${labels[fontType]}`);
+            }
+        }
+
+        function applySavedPreferences() {
+            if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont, true);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+        }
+        applySavedPreferences();
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('dark-mode', isDark);
+            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        const monthYearText = document.getElementById("month-year");
+        const calendarDays = document.getElementById("calendar-days");
+        let currentDate = new Date();
+        let activeDateStr = null;
+
+        function renderCalendar(date) {
+            calendarDays.innerHTML = "";
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            monthYearText.innerText = `${monthNames[month]} ${year}`;
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            for (let x = 0; x < firstDayIndex; x++) {
+                calendarDays.appendChild(document.createElement("div"));
+            }
+
+            for (let i = 1; i <= lastDay; i++) {
+                const dayBtn = document.createElement("button");
+                dayBtn.type = "button";
+                dayBtn.innerText = i;
+                dayBtn.classList.add("day");
+                
+                const formattedDateStr = `${monthNames[month]} ${i}, ${year}`;
+                dayBtn.setAttribute("aria-label", formattedDateStr);
+
+                if (formattedDateStr === activeDateStr) {
+                    dayBtn.classList.add('today');
+                    dayBtn.setAttribute('aria-current', 'date');
+                }
+
+                dayBtn.addEventListener("click", () => {
+                    document.querySelectorAll('.day').forEach(d => {
+                        d.classList.remove('today');
+                        d.removeAttribute('aria-current');
+                    });
+                    
+                    dayBtn.classList.add('today');
+                    dayBtn.setAttribute('aria-current', 'date');
+                    activeDateStr = formattedDateStr;
+
+                    showEntriesForDate(formattedDateStr, true).catch(error => showToast(`⚠️ ${error.message}`));
+                });
+
+                calendarDays.appendChild(dayBtn);
+            }
+        }
+
+        async function showEntriesForDate(dateStr, announce = false) {
+            const titleEl = document.getElementById('preview-heading');
+            const container = document.getElementById('selected-date-entries');
+            
+            titleEl.innerText = `Entries for ${dateStr}`;
+            
+            const entries = await loadDiaryEntries();
+
+            const matchingEntries = entries.filter(e => e.date === dateStr);
+
+            if (matchingEntries.length === 0) {
+                const emptyMessage = document.createElement('p');
+                emptyMessage.className = 'empty-day-message';
+                emptyMessage.textContent = `No entries found for ${dateStr}.`;
+                container.replaceChildren(emptyMessage);
+                if (announce) showToast(`No entries on ${dateStr}`);
+                return;
+            }
+
+            container.replaceChildren();
+            matchingEntries.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'day-entry-card';
+                card.innerHTML = `
+                    <div class="day-entry-header">
+                        <h3 class="day-entry-title"></h3>
+                        <span class="day-entry-mood"></span>
+                    </div>
+                    <p class="day-entry-text" style="color: inherit; line-height: 1.6; font-size: 15px;"></p>
+                    <div class="day-entry-tags" style="margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap;"></div>
+                    <button type="button" class="btn-delete">🗑️ Delete</button>
+                `;
+                card.querySelector('.day-entry-title').textContent = entry.title || '';
+                card.querySelector('.day-entry-mood').textContent = entry.mood || '';
+                card.querySelector('.day-entry-text').textContent = entry.text || '';
+                (Array.isArray(entry.tags) ? entry.tags : []).forEach(tag => {
+                    const badge = document.createElement('span');
+                    badge.className = 'tag-badge';
+                    badge.textContent = tag;
+                    card.querySelector('.day-entry-tags').appendChild(badge);
+                });
+                const deleteButton = card.querySelector('.btn-delete');
+                deleteButton.setAttribute('aria-label', `Delete entry ${entry.title || ''}`);
+                deleteButton.addEventListener('click', () => deleteCalendarEntry(entry.id, dateStr));
+                container.appendChild(card);
+            });
+
+            if (announce) showToast(`Loaded entries for ${dateStr}`);
+        }
+
+        async function deleteCalendarEntry(entryId, dateStr) {
+            try {
+                await deleteDiaryEntry(entryId);
+                await showEntriesForDate(dateStr, false);
+                showToast('🗑️ Entry deleted');
+            } catch (error) {
+                showToast(`⚠️ ${error.message}`);
+            }
+        }
+
+        document.getElementById("prev-month").addEventListener("click", () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar(currentDate);
+        });
+
+        document.getElementById("next-month").addEventListener("click", () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar(currentDate);
+        });
+
+        renderCalendar(currentDate);
+    </script>
+</body>
+</html>

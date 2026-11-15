@@ -8,12 +8,12 @@ import secrets
 from contextlib import contextmanager
 from pathlib import Path
 
-try:
-    import bcrypt
-except ImportError:
-    bcrypt = None
+import bcrypt
 
-from security import password_format_check, username_format_check
+from input_validation import password_format as password_format_check
+from input_validation import username_format as username_format_check
+from input_validation import email_format as email_format_check
+from data_encryption import decrypt_text, email_lookup_digest, encrypt_text
 
 
 DEFAULT_DATABASE = Path(__file__).with_name("accounts.db")
@@ -50,17 +50,41 @@ class AccountStore:
 
     def __init__(self, database_path=DEFAULT_DATABASE):
         self.database_path = str(database_path)
+        migrated_sensitive_data = False
         with self._connect() as connection:
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS accounts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT NOT NULL UNIQUE,
-                    password_hash BLOB NOT NULL,
-                    mode TEXT NOT NULL DEFAULT 'student',
-                    settings_json TEXT NOT NULL DEFAULT '{}'
+                    password_hash BLOB NOT NULL
                 )
                 """
+            )
+            account_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(accounts)")
+            }
+            if "email" not in account_columns:
+                connection.execute("ALTER TABLE accounts ADD COLUMN email TEXT")
+            if "email_encrypted" not in account_columns:
+                connection.execute("ALTER TABLE accounts ADD COLUMN email_encrypted BLOB")
+            if "email_lookup_hash" not in account_columns:
+                connection.execute("ALTER TABLE accounts ADD COLUMN email_lookup_hash TEXT")
+            connection.execute("DROP INDEX IF EXISTS accounts_email_unique")
+            legacy_accounts = connection.execute(
+                "SELECT id, email FROM accounts WHERE email IS NOT NULL"
+            ).fetchall()
+            migrated_sensitive_data = bool(legacy_accounts)
+            for account in legacy_accounts:
+                plain_email = account["email"]
+                connection.execute(
+                    "UPDATE accounts SET email_encrypted = ?, email_lookup_hash = ?, email = NULL "
+                    "WHERE id = ?",
+                    (encrypt_text(plain_email), email_lookup_digest(plain_email), account["id"]),
+                )
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS accounts_email_lookup_unique "
+                "ON accounts(email_lookup_hash) WHERE email_lookup_hash IS NOT NULL"
             )
             connection.execute(
                 """
@@ -72,69 +96,24 @@ class AccountStore:
                     mood TEXT NOT NULL,
                     body TEXT NOT NULL,
                     tags_json TEXT NOT NULL DEFAULT '[]',
-                    sleep_hours REAL,
-                    sleep_quality TEXT,
-                    stress INTEGER,
-                    fatigue INTEGER,
-                    study_hours REAL,
-                    work_hours REAL,
-                    extra_json TEXT NOT NULL DEFAULT '{}',
                     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
                 )
                 """
             )
-            connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS exams (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    account_id INTEGER NOT NULL,
-                    subject TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    target_hours REAL NOT NULL DEFAULT 10,
-                    completed_hours REAL NOT NULL DEFAULT 0,
-                    notes TEXT NOT NULL DEFAULT '',
-                    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
-                )
-                """
-            )
-            self._ensure_columns(connection)
-
-    def _ensure_columns(self, connection):
-        """Ensure all columns exist on older databases."""
-        account_cols = {row[1] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()}
-        if "mode" not in account_cols:
-            connection.execute("ALTER TABLE accounts ADD COLUMN mode TEXT NOT NULL DEFAULT 'student'")
-        if "settings_json" not in account_cols:
-            connection.execute("ALTER TABLE accounts ADD COLUMN settings_json TEXT NOT NULL DEFAULT '{}'")
-
-        entry_cols = {row[1] for row in connection.execute("PRAGMA table_info(diary_entries)").fetchall()}
-        if "sleep_hours" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN sleep_hours REAL")
-        if "sleep_quality" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN sleep_quality TEXT")
-        if "stress" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN stress INTEGER")
-        if "fatigue" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN fatigue INTEGER")
-        if "study_hours" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN study_hours REAL")
-        if "work_hours" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN work_hours REAL")
-        if "extra_json" not in entry_cols:
-            connection.execute("ALTER TABLE diary_entries ADD COLUMN extra_json TEXT NOT NULL DEFAULT '{}'")
 
     @contextmanager
     def _connect(self):
         connection = sqlite3.connect(self.database_path)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA secure_delete = ON")
         try:
             with connection:
                 yield connection
         finally:
             connection.close()
 
-    def create_account(self, username, password, mode="student"):
+    def create_account(self, username, password):
         """Validate credentials and save a bcrypt hash; return the new account id."""
         if not username_format_check(username):
             raise ValueError("Username must be 3–32 letters, numbers, or underscores.")
@@ -143,15 +122,13 @@ class AccountStore:
                 "Password must be longer than 8 characters and contain uppercase, "
                 "lowercase, a number, and punctuation."
             )
-        if mode not in ("student", "employed", "unemployed"):
-            mode = "student"
 
-        password_hash = _hash_password(password)
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
         try:
             with self._connect() as connection:
                 cursor = connection.execute(
-                    "INSERT INTO accounts (username, password_hash, mode) VALUES (?, ?, ?)",
-                    (username, password_hash, mode),
+                    "INSERT INTO accounts (username, password_hash) VALUES (?, ?)",
+                    (username, password_hash),
                 )
                 return cursor.lastrowid
         except sqlite3.IntegrityError as error:
@@ -171,39 +148,9 @@ class AccountStore:
                 (username,),
             ).fetchone()
 
-        if row is None or not _check_password(password, row["password_hash"]):
+        if row is None or not bcrypt.checkpw(password.encode("utf-8"), row["password_hash"]):
             return None
         return row["id"]
-
-    def get_user_profile(self, account_id):
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT id, username, mode, settings_json FROM accounts WHERE id = ?",
-                (account_id,),
-            ).fetchone()
-        if not row:
-            return None
-        try:
-            settings = json.loads(row["settings_json"])
-        except Exception:
-            settings = {}
-        return {
-            "id": row["id"],
-            "username": row["username"],
-            "mode": row["mode"] or "student",
-            "settings": settings,
-        }
-
-    def update_user_profile(self, account_id, mode=None, settings=None):
-        with self._connect() as connection:
-            if mode and mode in ("student", "employed", "unemployed"):
-                connection.execute("UPDATE accounts SET mode = ? WHERE id = ?", (mode, account_id))
-            if settings is not None:
-                connection.execute(
-                    "UPDATE accounts SET settings_json = ? WHERE id = ?",
-                    (json.dumps(settings), account_id),
-                )
-        return self.get_user_profile(account_id)
 
     @staticmethod
     def _validated_entry(entry):
@@ -226,177 +173,47 @@ class AccountStore:
             not isinstance(tag, str) or len(tag) > 30 for tag in tags
         ):
             raise ValueError("Entries can have up to 20 tags of 30 characters each.")
-
-        # Optional telemetry
-        sleep_hours = entry.get("sleepHours")
-        if sleep_hours is not None:
-            try:
-                sleep_hours = float(sleep_hours)
-                sleep_hours = max(0.0, min(24.0, sleep_hours))
-            except (ValueError, TypeError):
-                sleep_hours = None
-
-        sleep_quality = entry.get("sleepQuality")
-        if sleep_quality not in ("poor", "ok", "good"):
-            sleep_quality = None
-
-        stress = entry.get("stress")
-        if stress is not None:
-            try:
-                stress = int(stress)
-                stress = max(1, min(10, stress))
-            except (ValueError, TypeError):
-                stress = None
-
-        fatigue = entry.get("fatigue")
-        if fatigue is not None:
-            try:
-                fatigue = int(fatigue)
-                fatigue = max(1, min(10, fatigue))
-            except (ValueError, TypeError):
-                fatigue = None
-
-        study_hours = entry.get("studyHours")
-        if study_hours is not None:
-            try:
-                study_hours = float(study_hours)
-                study_hours = max(0.0, min(24.0, study_hours))
-            except (ValueError, TypeError):
-                study_hours = None
-
-        work_hours = entry.get("workHours")
-        if work_hours is not None:
-            try:
-                work_hours = float(work_hours)
-                work_hours = max(0.0, min(24.0, work_hours))
-            except (ValueError, TypeError):
-                work_hours = None
-
-        extra = {}
-        for key in ("summary", "dialectTerms", "safety", "spokenReply", "mode"):
-            if key in entry:
-                extra[key] = entry[key]
-
-        return (
-            date,
-            title.strip(),
-            mood,
-            body.strip(),
-            tags,
-            sleep_hours,
-            sleep_quality,
-            stress,
-            fatigue,
-            study_hours,
-            work_hours,
-            extra,
-        )
+        return date, title.strip(), mood, body.strip(), tags
 
     def list_entries(self, account_id):
         with self._connect() as connection:
             rows = connection.execute(
-                """
-                SELECT id, date, title, mood, body, tags_json,
-                       sleep_hours, sleep_quality, stress, fatigue,
-                       study_hours, work_hours, extra_json
-                FROM diary_entries
-                WHERE account_id = ? ORDER BY id DESC
-                """,
+                "SELECT id, date, title, mood, body, tags_json FROM diary_entries "
+                "WHERE account_id = ? ORDER BY id DESC",
                 (account_id,),
             ).fetchall()
-        entries = []
-        for row in rows:
-            try:
-                tags = json.loads(row["tags_json"])
-            except Exception:
-                tags = []
-            try:
-                extra = json.loads(row["extra_json"])
-            except Exception:
-                extra = {}
-            entry = {
+        return [
+            {
                 "id": row["id"],
                 "date": row["date"],
                 "title": row["title"],
                 "mood": row["mood"],
                 "text": row["body"],
-                "tags": tags,
-                "sleepHours": row["sleep_hours"],
-                "sleepQuality": row["sleep_quality"],
-                "stress": row["stress"],
-                "fatigue": row["fatigue"],
-                "studyHours": row["study_hours"],
-                "workHours": row["work_hours"],
+                "tags": json.loads(row["tags_json"]),
             }
-            if isinstance(extra, dict):
-                for k, v in extra.items():
-                    if k not in entry:
-                        entry[k] = v
-            entries.append(entry)
-        return entries
+            for row in rows
+        ]
 
     def create_entry(self, account_id, entry):
-        (
-            date,
-            title,
-            mood,
-            body,
-            tags,
-            sleep_hours,
-            sleep_quality,
-            stress,
-            fatigue,
-            study_hours,
-            work_hours,
-            extra,
-        ) = self._validated_entry(entry)
+        date, title, mood, body, tags = self._validated_entry(entry)
         with self._connect() as connection:
             cursor = connection.execute(
-                """
-                INSERT INTO diary_entries (
-                    account_id, date, title, mood, body, tags_json,
-                    sleep_hours, sleep_quality, stress, fatigue,
-                    study_hours, work_hours, extra_json
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    account_id,
-                    date,
-                    title,
-                    mood,
-                    body,
-                    json.dumps(tags),
-                    sleep_hours,
-                    sleep_quality,
-                    stress,
-                    fatigue,
-                    study_hours,
-                    work_hours,
-                    json.dumps(extra),
-                ),
+                "INSERT INTO diary_entries (account_id, date, title, mood, body, tags_json) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (account_id, date, title, mood, body, json.dumps(tags)),
             )
             entry_id = cursor.lastrowid
         return next(item for item in self.list_entries(account_id) if item["id"] == entry_id)
 
-    def update_entry(self, account_id, entry_id, title=None, body=None, **kwargs):
+    def update_entry(self, account_id, entry_id, title, body):
+        if not isinstance(title, str) or not title.strip() or len(title) > 120:
+            raise ValueError("Entry title must be 1–120 characters.")
+        if not isinstance(body, str) or len(body) > 10000:
+            raise ValueError("Entry text must be 10,000 characters or fewer.")
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM diary_entries WHERE id = ? AND account_id = ?",
-                (entry_id, account_id),
-            ).fetchone()
-            if not row:
-                return False
-
-            new_title = title.strip() if isinstance(title, str) and title.strip() else row["title"]
-            new_body = body.strip() if isinstance(body, str) else row["body"]
-
-            if len(new_title) > 120 or len(new_body) > 10000:
-                raise ValueError("Title or text exceeds allowed length.")
-
             cursor = connection.execute(
                 "UPDATE diary_entries SET title = ?, body = ? WHERE id = ? AND account_id = ?",
-                (new_title, new_body, entry_id, account_id),
+                (title.strip(), body.strip(), entry_id, account_id),
             )
             return cursor.rowcount > 0
 

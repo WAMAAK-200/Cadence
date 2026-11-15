@@ -7,6 +7,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from input_validation import password_format as password_format_check
 from input_validation import username_format as username_format_check
+from input_validation import email_format as email_format_check
 
 # Make sure ai_backend can be imported
 PROJECT_ROOT = Path(__file__).parent.resolve()
@@ -27,7 +28,7 @@ except ImportError:
 
 
 class AccountHandler(BaseHTTPRequestHandler):
-    """Unified HTTP server handling all Smart Diary static files and API endpoints."""
+    """Small validation endpoint for the static account page."""
 
     sessions = {}
     allowed_origins = {"http://127.0.0.1:8000", "http://localhost:8000"}
@@ -113,10 +114,29 @@ class AccountHandler(BaseHTTPRequestHandler):
             if account_id is None:
                 self._send_json(401, {"message": "Please log in again."})
                 return
+            self._send_json(200, {"entries": self.server.account_store.list_entries(account_id)})
             from account_store import AccountStore
             self._send_json(200, {"entries": AccountStore().list_entries(account_id)})
             return
 
+        files = {
+            "/": "user_interface.html",
+            "/user_interface.html": "user_interface.html",
+            "/entries.html": "entries.html",
+            "/calendar.html": "calendar.html",
+            "/insights.html": "insights.html",
+            "/account.html": "account.html",
+            "/login.html": "login.html",
+            "/change_password.html": "change_password.html",
+            "/forgot_password.html": "forgot_password.html",
+            "/sign_up.html": "sign_up.html",
+            "/user_style.css": "user_style.css",
+            "/entry_storage.js": "entry_storage.js",
+            "/account_nav.js": "account_nav.js",
+        }
+        filename = files.get(self.path)
+        if filename is None:
+            self.send_error(404)
         # 4. Exams
         if self.path == "/exams":
             account_id = self._authenticated_account_id()
@@ -172,6 +192,25 @@ class AccountHandler(BaseHTTPRequestHandler):
             token = authorization[7:] if authorization.startswith("Bearer ") else ""
             self.sessions.pop(token, None)
             self._send_json(200, {"message": "Logged out."})
+            return
+
+        if self.path == "/entries/import":
+            account_id = self._authenticated_account_id()
+            if account_id is None:
+                self._send_json(401, {"message": "Please log in again."})
+                return
+            try:
+                data = self._read_json(6 * 1024 * 1024)
+                entries = data.get("entries") if isinstance(data, dict) else None
+                offset = data.get("offset", 0) if isinstance(data, dict) else 0
+                imported = self.server.account_store.import_entries(account_id, entries, offset)
+            except OverflowError:
+                self._send_json(413, {"message": "Guest entries are too large to import in one request."})
+                return
+            except (ValueError, json.JSONDecodeError) as error:
+                self._send_json(400, {"message": str(error) or "Invalid guest entry data."})
+                return
+            self._send_json(200, {"imported": imported})
             return
 
         # 2. User Profile Update
@@ -467,15 +506,22 @@ class AccountHandler(BaseHTTPRequestHandler):
                 self.send_error(400, "Invalid JSON")
                 return
 
-            username = data.get("username") if isinstance(data, dict) else None
-            password = data.get("password") if isinstance(data, dict) else None
-            mode = data.get("mode", "student") if isinstance(data, dict) else "student"
-            username_valid = isinstance(username, str) and username_format_check(username)
-            password_valid = password_format_check(password)
-            valid = username_valid and password_valid
-            created = False
-            authenticated = False
-            user_profile = None
+        username = data.get("username") if isinstance(data, dict) else None
+        password = data.get("password") if isinstance(data, dict) else None
+        email = data.get("email") if isinstance(data, dict) else None
+        if self.path == "/validate-email":
+            valid_email = email_format_check(email)
+            self._send_json(200, {
+                "valid": valid_email,
+                "message": "Email format is valid." if valid_email else "Enter a valid email address."
+            })
+            return
+        username_valid = isinstance(username, str) and username_format_check(username)
+        password_valid = password_format_check(password)
+        email_valid = email_format_check(email) if self.path == "/signup-account" else True
+        valid = username_valid and password_valid and email_valid
+        created = False
+        authenticated = False
 
             if self.path == "/signup-account" and valid:
                 try:
@@ -516,6 +562,30 @@ class AccountHandler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_PUT(self):
+        if self.path == "/account/password":
+            account_id = self._authenticated_account_id()
+            if account_id is None:
+                self._send_json(401, {"message": "Please log in again."})
+                return
+            try:
+                data = self._read_json(4096)
+                if not isinstance(data, dict):
+                    raise ValueError("Invalid password change request.")
+                changed = self.server.account_store.change_password(
+                    account_id, data.get("current_password"), data.get("new_password")
+                )
+            except OverflowError:
+                self._send_json(413, {"message": "Password change request is too large."})
+                return
+            except (ValueError, json.JSONDecodeError) as error:
+                self._send_json(400, {"message": str(error) or "Invalid password change request."})
+                return
+            if not changed:
+                self._send_json(400, {"message": "Current password is incorrect."})
+                return
+            self._send_json(200, {"message": "Password updated."})
+            return
+
         if not self.path.startswith("/entries/"):
             self.send_error(404)
             return
@@ -525,8 +595,9 @@ class AccountHandler(BaseHTTPRequestHandler):
             return
         try:
             entry_id = int(self.path.removeprefix("/entries/"))
-            data = self._read_json(65536)
+            data = self._read_json(50000)
             from account_store import AccountStore
+
             updated = AccountStore().update_entry(account_id, entry_id, data.get("title"), data.get("text"))
         except OverflowError:
             self._send_json(413, {"message": "Entry is too large."})
@@ -540,49 +611,49 @@ class AccountHandler(BaseHTTPRequestHandler):
         self._send_json(200, {"message": "Entry updated."})
 
     def do_DELETE(self):
+        if not self.path.startswith("/entries/"):
+            self.send_error(404)
+            return
         account_id = self._authenticated_account_id()
         if account_id is None:
             self._send_json(401, {"message": "Please log in again."})
             return
-
-        if self.path.startswith("/entries/"):
-            try:
-                entry_id = int(self.path.removeprefix("/entries/"))
-            except ValueError:
-                self._send_json(400, {"message": "Invalid entry id."})
-                return
-            from account_store import AccountStore
-            deleted = AccountStore().delete_entry(account_id, entry_id)
-            if not deleted:
-                self._send_json(404, {"message": "Entry not found."})
-                return
-            self._send_json(200, {"message": "Entry deleted."})
+        try:
+            entry_id = int(self.path.removeprefix("/entries/"))
+        except ValueError:
+            self._send_json(400, {"message": "Invalid entry id."})
             return
+        from account_store import AccountStore
 
-        if self.path.startswith("/exams/"):
-            try:
-                exam_id = int(self.path.removeprefix("/exams/"))
-            except ValueError:
-                self._send_json(400, {"message": "Invalid exam id."})
-                return
-            from account_store import AccountStore
-            deleted = AccountStore().delete_exam(account_id, exam_id)
-            if not deleted:
-                self._send_json(404, {"message": "Exam not found."})
-                return
-            self._send_json(200, {"message": "Exam deleted."})
+        deleted = AccountStore().delete_entry(account_id, entry_id)
+        if not deleted:
+            self._send_json(404, {"message": "Entry not found."})
             return
+        self._send_json(200, {"message": "Entry deleted."})
 
-        self.send_error(404)
+
+def create_server(host="127.0.0.1", port=8000, database_path=None):
+    """Create the HTTP server and initialize its shared account database."""
+    from account_store import AccountStore
+
+    try:
+        server = HTTPServer(("127.0.0.1", 8000), AccountHandler)
+    except OSError as error:
+        raise RuntimeError("Port 8000 is unavailable; stop the process using it before starting Smart Diary.") from error
+
+
+def main():
+    """Initialize the backend and run the Smart Diary web server."""
+    server = create_server()
+    print(f"Smart Diary account and entry server listening at http://{server.server_address[0]}:{server.server_address[1]}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nSmart Diary server stopped.")
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    try:
-        server = HTTPServer(("127.0.0.1", port), AccountHandler)
-    except OSError as error:
-        raise RuntimeError(f"Port {port} is unavailable; stop the process using it before starting Smart Diary.") from error
-
-    print(f"Smart Diary unified server listening at http://127.0.0.1:{port}")
-    server.serve_forever()
+    main()
 

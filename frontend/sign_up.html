@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sign Up - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
@@ -22,9 +21,9 @@
             </nav>
         </div>
         <div class="sidebar-footer">
-            <button class="sidebar-btn" onclick="toggleDarkMode()">Light / dark</button>
-            <a href="account.html" class="account-link">Log in</a>
-            <a href="sign_up.html" class="account-link active" aria-current="page">Sign up</a>
+            <button class="sidebar-btn" onclick="toggleDarkMode()">🌙 Toggle Theme</button>
+            <a href="login.html" class="account-link session-link">👤 Log In</a>
+            <a href="sign_up.html" class="account-link signup-link active" aria-current="page">✨ Sign Up</a>
         </div>
     </aside>
 
@@ -32,34 +31,33 @@
         <div class="top-actions">
             <h1 class="date-heading">Create Your Account</h1>
         </div>
-        <p style="margin-bottom: 24px;">Join Smart Diary to turn your daily reflections into structured wellbeing data and music.</p>
+        <p style="margin-bottom: 24px;">Sign up to start using Smart Diary.</p>
+        <p id="signup-session-notice" hidden>You are already signed in. Go to your diary or log out before creating another account.</p>
 
         <form class="form-box" id="signup-form">
             <label for="signup-username" style="font-size: 14px; font-weight: 600;">Username</label>
-            <input type="text" id="signup-username" required minlength="3" maxlength="32" autocomplete="username" placeholder="Choose a username (3–32 chars)" aria-describedby="signup-username-error">
+            <input type="text" id="signup-username" required minlength="3" maxlength="32" autocomplete="username" placeholder="Choose a username" aria-describedby="signup-username-error">
             <small class="field-error" id="signup-username-error" aria-live="polite"></small>
 
+            <label for="signup-email" style="font-size: 14px; font-weight: 600;">Email</label>
+            <input type="email" id="signup-email" required maxlength="254" autocomplete="email" placeholder="you@example.com" aria-describedby="signup-email-error">
+            <small class="field-error" id="signup-email-error" aria-live="polite"></small>
+
             <label for="signup-password" style="font-size: 14px; font-weight: 600;">Password</label>
-            <input type="password" id="signup-password" required maxlength="72" autocomplete="new-password" placeholder="8+ chars with uppercase, number, symbol" aria-describedby="signup-password-error">
+            <input type="password" id="signup-password" required maxlength="72" autocomplete="new-password" placeholder="Create a password" aria-describedby="signup-password-error">
             <small class="field-error" id="signup-password-error" aria-live="polite"></small>
 
-            <!-- Demographic Onboarding Mode Routing -->
-            <label for="signup-mode" style="font-size: 14px; font-weight: 600;">What describes your current situation?</label>
-            <select id="signup-mode" class="mode-select" style="padding: 10px 12px; margin-bottom: 12px;">
-                <option value="student">Student (Activates Exam Schedule &amp; Revision Tracker)</option>
-                <option value="employed">Employed / Flexible Work (Activates Work-Pacing &amp; Shift Monitor)</option>
-                <option value="unemployed">Unemployed / Recovery (Activates Energy Baseline &amp; Social Prescribing)</option>
-            </select>
+            <label for="signup-confirm-password" style="font-size: 14px; font-weight: 600;">Confirm password</label>
+            <input type="password" id="signup-confirm-password" required maxlength="72" autocomplete="new-password" placeholder="Re-enter your password" aria-describedby="signup-confirm-password-error">
+            <small class="field-error" id="signup-confirm-password-error" aria-live="polite"></small>
 
-            <button type="submit" class="save-btn" style="width: 100%;">Create Account</button>
+            <button type="submit" class="save-btn" style="width: 100%;">Sign Up</button>
         </form>
-
-        <p class="account-switch">Already have an account? <a href="account.html">Log in</a></p>
+        <p class="account-switch">Already have an account? <a href="login.html">Log in</a></p>
     </main>
 
     <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
-
-    <script src="entry_storage.js"></script>
+    <script src="account_nav.js"></script>
     <script>
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -77,14 +75,26 @@
         function toggleDarkMode() {
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('dark-mode', isDark);
-            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+            showToast(isDark ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
         }
 
         const signupForm = document.getElementById('signup-form');
         const signupUsername = document.getElementById('signup-username');
+        const signupEmail = document.getElementById('signup-email');
         const signupPassword = document.getElementById('signup-password');
-        const signupMode = document.getElementById('signup-mode');
+        const signupConfirmPassword = document.getElementById('signup-confirm-password');
         const usernamePattern = /^[A-Za-z0-9_]{3,32}$/;
+        function emailIsValid(value) {
+            if (typeof value !== 'string' || value !== value.trim() || value.length > 254 || !/^[\x00-\x7F]+$/.test(value)) return false;
+            const parts = value.split('@');
+            if (parts.length !== 2) return false;
+            const [local, domain] = parts;
+            if (!local || local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..')
+                || !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)) return false;
+            const labels = domain.split('.');
+            return labels.length >= 2 && labels.every(label => label.length >= 1 && label.length <= 63
+                && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label));
+        }
         const passwordPattern = password => password.length > 8
             && new TextEncoder().encode(password).length <= 72
             && /[A-Z]/.test(password)
@@ -94,42 +104,34 @@
 
         signupForm.addEventListener('submit', async event => {
             event.preventDefault();
-            const username = signupUsername.value.trim();
-            const password = signupPassword.value;
-            const mode = signupMode.value;
-
-            const usernameValid = usernamePattern.test(username);
-            const passwordValid = passwordPattern(password);
-
+            const usernameValid = usernamePattern.test(signupUsername.value);
+            const emailValid = emailIsValid(signupEmail.value);
+            const passwordValid = passwordPattern(signupPassword.value);
+            const passwordsMatch = signupPassword.value === signupConfirmPassword.value;
             document.getElementById('signup-username-error').textContent = usernameValid ? '' : 'Use 3–32 characters: letters, numbers, or underscores.';
+            document.getElementById('signup-email-error').textContent = emailValid ? '' : 'Enter a valid email address.';
             document.getElementById('signup-password-error').textContent = passwordValid ? '' : 'Use more than 8 characters with uppercase, lowercase, a number, and punctuation.';
-
-            if (!usernameValid || !passwordValid) return;
+            document.getElementById('signup-confirm-password-error').textContent = passwordsMatch ? '' : 'Passwords do not match.';
+            if (!usernameValid || !emailValid || !passwordValid || !passwordsMatch) return;
 
             try {
-                const response = await fetch(`${ENTRY_API_BASE}/signup-account`, {
+                const response = await fetch('http://127.0.0.1:8000/signup-account', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, mode })
+                    body: JSON.stringify({ username: signupUsername.value, email: signupEmail.value, password: signupPassword.value })
                 });
-
+                if (!response.ok) throw new Error('The account server returned an error.');
                 const result = await response.json();
-                if (result.created) {
-                    setStoredUserMode(mode);
-                    showToast('Account created successfully! Please log in.');
-                    setTimeout(() => {
-                        window.location.href = 'account.html';
-                    }, 1000);
-                } else {
-                    showToast(result.message || 'Error creating account.');
-                }
+                showToast(result.message);
             } catch (error) {
-                showToast('Could not reach backend server.');
+                showToast('Could not reach the account server. Start it with: python security.py');
             }
         });
 
         signupUsername.addEventListener('input', () => document.getElementById('signup-username-error').textContent = '');
+        signupEmail.addEventListener('input', () => document.getElementById('signup-email-error').textContent = '');
         signupPassword.addEventListener('input', () => document.getElementById('signup-password-error').textContent = '');
+        signupConfirmPassword.addEventListener('input', () => document.getElementById('signup-confirm-password-error').textContent = '');
 
         if (localStorage.getItem('dark-mode') === 'true') document.body.classList.add('dark-mode');
     </script>
