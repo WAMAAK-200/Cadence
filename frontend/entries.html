@@ -169,6 +169,14 @@
 
                 right.appendChild(dateSpan);
                 right.appendChild(moodSpan);
+                // Seeded examples are labelled so they are never mistaken for the user's own diary.
+                if (isSampleEntry(entry)) {
+                    const sampleTag = document.createElement('span');
+                    sampleTag.className = 'sample-badge';
+                    sampleTag.textContent = 'Sample';
+                    sampleTag.title = 'An example entry, not yours. It is left out of your insights and music.';
+                    right.appendChild(sampleTag);
+                }
                 header.appendChild(title);
                 header.appendChild(right);
                 card.appendChild(header);

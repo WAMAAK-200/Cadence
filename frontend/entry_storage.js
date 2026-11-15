@@ -4,7 +4,9 @@
  * as well as AI extraction, pattern insight generation, exam tracking, and reporting.
  */
 
-const ENTRY_API_BASE = 'http://127.0.0.1:8000';
+// Talk to the server that served this page (so localhost vs 127.0.0.1, or a test port, all work).
+// Falls back to the default dev server when the file is opened directly from disk.
+const ENTRY_API_BASE = /^https?:$/.test(location.protocol) ? location.origin : 'http://127.0.0.1:8000';
 const ENTRY_SESSION_KEY = 'smartdiary_session_token';
 const ENTRY_EXPIRED_KEY = 'smartdiary_session_expired';
 const ENTRY_LOCAL_KEY = 'diary_entries';
@@ -90,6 +92,19 @@ const SAMPLE_DIARY_ENTRIES = [
         spokenReply: 'Late nights are tough. Be kind to yourself today and try to catch up on rest.'
     }
 ];
+
+// Seeded examples are not the user's data. They are flagged so pages can label them
+// and keep them out of insights, the week view and the weekly composition.
+// Older stored copies have no flag, so they are also recognised by id + title.
+function isSampleEntry(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    if (entry.isSample === true || entry.sample === true) return true;
+    return SAMPLE_DIARY_ENTRIES.some(s => s.id === entry.id && s.title === entry.title);
+}
+
+function personalEntries(entries) {
+    return (Array.isArray(entries) ? entries : []).filter(e => !isSampleEntry(e));
+}
 
 const SAMPLE_EXAMS = [
     {
@@ -192,7 +207,7 @@ function normalizeEntry(entry, index = 0) {
         dialectTerms: Array.isArray(entry.dialectTerms) ? entry.dialectTerms : [],
         safety: (entry.safety && typeof entry.safety === 'object') ? entry.safety : { level: 'none', reason: null },
         spokenReply: typeof entry.spokenReply === 'string' ? entry.spokenReply : '',
-        isSample: entry.isSample === true
+        isSample: isSampleEntry(entry)
     };
 }
 
@@ -434,6 +449,7 @@ async function loadDiaryEntries() {
 async function createDiaryEntry(entry) {
     const normalized = normalizeEntry(entry, 0);
     const token = getEntrySessionToken();
+    let accountError = null;
     if (token && token !== 'expired') {
         try {
             const result = await accountEntriesRequest('/entries', {
@@ -443,12 +459,14 @@ async function createDiaryEntry(entry) {
             if (result.entry) return normalizeEntry(result.entry, 0);
         } catch (e) {
             console.warn('Falling back to saving locally:', e.message);
+            accountError = e.message;
         }
     }
     const entries = await getGuestEntries();
     entries.unshift(normalized);
     await saveGuestEntries(entries);
-    return normalized;
+    // Tell the caller when an account save fell back to this device, so the UI can say so honestly.
+    return accountError ? { ...normalized, savedLocally: true, accountError } : normalized;
 }
 
 async function updateDiaryEntry(entryId, changes) {
@@ -573,6 +591,8 @@ async function extractCheckinAI(transcript, mode = 'student', today = null) {
         const isCrisis = lower.includes('kill myself') || lower.includes('suicide') || lower.includes('end it all') || lower.includes("don't want to live");
 
         return {
+            // Marks this as a browser-side guess: callers must not treat its numbers as measurements.
+            offlineFallback: true,
             mood: mood === 'happy' ? 8 : (mood === 'calm' ? 7 : (mood === 'reflective' ? 5 : 3)),
             sleepHours: 7.0,
             sleepQuality: 'ok',
@@ -594,6 +614,12 @@ async function extractCheckinAI(transcript, mode = 'student', today = null) {
     }
 }
 
+// The summary/prompt endpoints expect mood as a 1-10 number. Word moods ("stressed") or a
+// skipped mood ('') are sent as null rather than converted into an invented score.
+function entryForApi(entry) {
+    return { ...entry, mood: typeof entry.mood === 'number' ? entry.mood : null };
+}
+
 async function getInsightsAI(entries, mode = 'student', examInfo = {}) {
     try {
         const response = await fetch(`${ENTRY_API_BASE}/api/insights`, {
@@ -610,21 +636,8 @@ async function getInsightsAI(entries, mode = 'student', examInfo = {}) {
         if (!response.ok) throw new Error('Failed to compute insights');
         return await response.json();
     } catch (e) {
-        return {
-            insights: [
-                {
-                    patternId: 'pat_sleep_stress_01',
-                    title: 'Sleep and Stress Link',
-                    body: 'Your recent check-ins show that days with higher sleep duration generally correspond with lower stress levels.'
-                }
-            ],
-            advice: [
-                {
-                    text: 'Aim for a consistent 7-8 hours baseline sleep tonight.',
-                    why: 'Consistent rest protects focus and cognitive stamina.'
-                }
-            ]
-        };
+        // Never invent a personal pattern when the service can't be reached.
+        return { insights: [], advice: [], unavailable: true };
     }
 }
 
@@ -638,7 +651,7 @@ async function getDailyPromptAI(mode = 'student', examInfo = {}, recentEntries =
                 examPhase: examInfo.examPhase || 'early_term',
                 daysToNextExam: examInfo.daysToNextExam || null,
                 nextExamSubject: examInfo.nextExamSubject || null,
-                recent: recentEntries
+                recent: recentEntries.map(entryForApi)
             })
         });
         if (!response.ok) throw new Error('Prompt error');
@@ -654,16 +667,13 @@ async function getWeeklySummaryAI(entries, mode = 'student') {
         const response = await fetch(`${ENTRY_API_BASE}/api/weekly-summary`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode, entries })
+            body: JSON.stringify({ mode, entries: entries.map(entryForApi) })
         });
         if (!response.ok) throw new Error('Weekly summary error');
         return await response.json();
     } catch (e) {
-        return {
-            summary: `You logged ${entries.length} check-ins this week. Keeping a steady log helps track your momentum.`,
-            recurringTopics: ['study', 'rest'],
-            highlight: entries.length > 0 ? entries[0].title : null
-        };
+        // Honest fallback: no invented topics or counts.
+        return { summary: "Couldn't put together a summary right now. Your entries are safe; try again later.", recurringTopics: [], highlight: null, unavailable: true };
     }
 }
 
@@ -693,12 +703,13 @@ function moodName(mood) {
         if (mood >= 4.0) return 'Reflective';
         return 'Stressed';
     }
-    return String(mood || '').replace(/[^\p{L}\s-]/gu, '').trim() || 'Calm';
+    // A skipped mood stays empty: never shown or counted as "Calm".
+    return String(mood || '').replace(/[^\p{L}\s-]/gu, '').trim();
 }
 
 function moodKey(mood) {
     const name = moodName(mood).toLowerCase();
-    return MOOD_KEYS.includes(name) ? name : 'calm';
+    return MOOD_KEYS.includes(name) ? name : '';
 }
 
 function renderMood(element, mood) {
@@ -710,6 +721,8 @@ function renderMood(element, mood) {
         note.className = 'note';
         note.setAttribute('aria-hidden', 'true');
         element.appendChild(note);
+    } else {
+        delete element.dataset.mood;
     }
-    element.appendChild(document.createTextNode(moodName(mood)));
+    element.appendChild(document.createTextNode(moodName(mood) || 'No mood chosen'));
 }

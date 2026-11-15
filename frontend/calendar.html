@@ -298,7 +298,7 @@
 
                 const title = document.createElement('h4');
                 title.className = 'entry-card-title';
-                title.textContent = entry.title;
+                title.textContent = isSampleEntry(entry) ? `${entry.title} (sample)` : entry.title;
 
                 const moodSpan = document.createElement('span');
                 moodSpan.className = 'mood-pill';

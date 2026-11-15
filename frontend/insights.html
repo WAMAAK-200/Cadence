@@ -6,7 +6,7 @@
     <title>Insights &amp; Weekly Composition - Smart Diary</title>
     <link rel="stylesheet" href="user_style.css">
 </head>
-<body>
+<body class="insights-page">
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <aside class="sidebar" aria-label="Primary Navigation">
@@ -53,44 +53,36 @@
             <h1 class="date-heading">Insights &amp; Weekly Composition</h1>
         </div>
 
-        <!-- 1. Algorithmic Weekly Music Composition Generator -->
-        <section class="music-player-card" aria-labelledby="compositionHeading">
-            <div class="music-player-header">
+        <p class="sample-note" id="sampleNote" hidden></p>
+
+        <!-- 1. Weekly composition. Built only from the user's own saved entries this week. -->
+        <section class="sound-card" aria-labelledby="compositionHeading">
+            <div class="sound-head">
                 <div>
-                    <h2 id="compositionHeading" style="font-size: var(--text-md); font-weight: 700;">Your Week as Music</h2>
-                    <p style="font-size: var(--text-xs); color: var(--ink-3);">Generative composition synthesized from your mood, sleep, stress &amp; study hours</p>
+                    <p class="flow-eyebrow">Weekly composition</p>
+                    <h2 id="compositionHeading" class="sound-title">Your week, in sound</h2>
+                    <p class="sound-sub">The days you wrote this week shape one short piece: mood sets the key, sleep the tempo, stress the tension and study or work hours the rhythm. Days without an entry add nothing.</p>
                 </div>
-                <button type="button" class="save-btn" id="btnPlayComposition" onclick="togglePlayComposition()">
-                    ▶ Play Composition
-                </button>
+                <button type="button" class="save-btn sound-play" id="btnPlayComposition" onclick="togglePlayComposition()" aria-describedby="soundStatus" disabled>Play</button>
+            </div>
+            <p class="sound-status" id="soundStatus" role="status" aria-live="polite">Loading your week...</p>
+
+            <div class="sound-days" id="soundDays" role="group" aria-label="Days this week. Choose one to see its entry."></div>
+
+            <div class="sound-day-detail" id="soundDayDetail" aria-live="polite"></div>
+
+            <div class="sound-legend">
+                <h3 class="sound-legend-title">How to read it</h3>
+                <ul>
+                    <li><span class="lg lg-colour" aria-hidden="true"></span><span><strong>Colour</strong> is the mood you chose. It sets the key: brighter for happy, minor for stressed.</span></li>
+                    <li><span class="lg lg-height" aria-hidden="true"></span><span><strong>Height</strong> is hours of sleep. Less sleep plays faster.</span></li>
+                    <li><span class="lg lg-tense" aria-hidden="true"></span><span><strong>Stripes</strong> mean stress of 7 or more. It adds tension to the week&rsquo;s sound.</span></li>
+                    <li><span class="lg lg-dots" aria-hidden="true"></span><span><strong>Dots</strong> are study or work hours. More hours, busier rhythm.</span></li>
+                    <li><span class="lg lg-missing" aria-hidden="true"></span><span><strong>Dashed</strong> means not recorded. Missing values stay missing; nothing is guessed.</span></li>
+                </ul>
             </div>
 
-            <!-- Waveform Canvas Visualizer -->
-            <canvas id="musicVisualizerCanvas" class="visualizer-canvas" width="600" height="64"></canvas>
-
-            <!-- Musical Parameters Derived from Telemetry -->
-            <div class="music-meta-grid">
-                <div class="music-param-item">
-                    <span class="param-label">Key &amp; Scale (Mood)</span>
-                    <span class="param-val" id="musicScaleVal">G Major Pentatonic</span>
-                </div>
-                <div class="music-param-item">
-                    <span class="param-label">Tempo (Sleep BPM)</span>
-                    <span class="param-val" id="musicBpmVal">90 BPM</span>
-                </div>
-                <div class="music-param-item">
-                    <span class="param-label">Harmonic Tension (Stress)</span>
-                    <span class="param-val" id="musicTensionVal">Smooth &amp; Ambient</span>
-                </div>
-                <div class="music-param-item">
-                    <span class="param-label">Rhythm (Study/Work)</span>
-                    <span class="param-val" id="musicRhythmVal">Steady Arpeggio</span>
-                </div>
-            </div>
-
-            <div style="font-size: var(--text-xs); color: var(--ink-2); line-height: 1.5;">
-                <strong>How it's composed:</strong> Mood sets the key signature; sleep duration dictates the tempo; stress controls harmonic dissonance &amp; filter resonance; study/work hours drive rhythmic counterpoint.
-            </div>
+            <dl class="sound-summary" id="soundSummary"></dl>
         </section>
 
         <!-- 2. AI Pattern Analysis & Empathetic Advice -->
@@ -140,13 +132,23 @@
     <script src="music_synth.js"></script>
     <script src="entry_storage.js"></script>
     <script>
-        let allEntries = [];
+        let allEntries = [];     // the user's own entries only (samples removed)
+        let selectedDay = null;
 
         async function initInsights() {
+            let loaded = [];
             try {
-                allEntries = await loadDiaryEntries();
+                loaded = await loadDiaryEntries();
             } catch (e) {
                 console.warn(e);
+            }
+            // Sample entries are examples, not the user's diary: keep them out of every insight.
+            allEntries = personalEntries(loaded);
+            const samples = loaded.length - allEntries.length;
+            const note = document.getElementById('sampleNote');
+            if (samples) {
+                note.hidden = false;
+                note.textContent = `${samples} sample ${samples === 1 ? 'entry is' : 'entries are'} left out. Everything here comes from your own entries.`;
             }
 
             renderMusicPreview();
@@ -155,39 +157,243 @@
             renderWeeklySummary();
         }
 
-        // ---- 1. Music Composition Preview & Controls ----
-        function renderMusicPreview() {
-            if (!window.SmartDiaryMusicSynth) return;
-            const params = window.SmartDiaryMusicSynth.computeMusicParams(allEntries);
+        // ---- 1. Your week, in sound ----
+        const synth = window.SmartDiaryMusicSynth;
+        const MOOD_LABEL = { happy: 'Happy', calm: 'Calm', reflective: 'Reflective', stressed: 'Stressed' };
+        const AUDIO_SUPPORTED = Boolean(window.AudioContext || window.webkitAudioContext);
+        const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let weekParams = null;
 
-            document.getElementById('musicScaleVal').textContent = params.scaleName;
-            document.getElementById('musicBpmVal').textContent = `${params.bpm} BPM (Sleep: ${params.avgSleep}h)`;
-            document.getElementById('musicTensionVal').textContent = `${params.tensionLevel} (Stress: ${params.avgStress}/10)`;
-            document.getElementById('musicRhythmVal').textContent = `${params.rhythmComplexity} (${params.totalHours}h)`;
+        // The week view is worked out here from saved entries only. Missing values stay null
+        // (the sound engine fills gaps with neutral defaults, so its numbers aren't shown for them).
+        const numOrNull = v => (typeof v === 'number' && isFinite(v) ? v : null);
+        const localIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const avg = xs => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+
+        function buildWeek(entries) {
+            const now = new Date();
+            const monday = new Date(now);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+            const days = DAY_NAMES.map((name, i) => {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                const date = localIso(d);
+                const matches = entries.filter(e => String(e.date).slice(0, 10) === date)
+                    .sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+                const entry = matches[0] || null;   // newest entry of the day
+                const moodKey = entry ? String(entry.mood || '').toLowerCase() : '';
+                return {
+                    index: i, name, date, entry, count: matches.length, isToday: date === localIso(now),
+                    mood: MOOD_LABEL[moodKey] ? moodKey : null,
+                    sleep: entry ? numOrNull(entry.sleepHours) : null,
+                    stress: entry ? numOrNull(entry.stress) : null,
+                    hours: entry ? (numOrNull(entry.studyHours) ?? numOrNull(entry.workHours)) : null
+                };
+            });
+            const logged = days.filter(d => d.entry);
+            const counts = {};
+            logged.forEach(d => { if (d.mood) counts[d.mood] = (counts[d.mood] || 0) + 1; });
+            const hoursList = logged.map(d => d.hours).filter(v => v !== null);
+            return {
+                days,
+                entries: logged.map(d => d.entry),
+                loggedDays: logged.length,
+                mood: Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null,
+                avgSleep: avg(logged.map(d => d.sleep).filter(v => v !== null)),
+                avgStress: avg(logged.map(d => d.stress).filter(v => v !== null)),
+                totalHours: hoursList.length ? Math.round(hoursList.reduce((a, b) => a + b, 0) * 10) / 10 : null
+            };
         }
 
-        function togglePlayComposition() {
-            const btn = document.getElementById('btnPlayComposition');
-            const canvas = document.getElementById('musicVisualizerCanvas');
+        function setSoundStatus(text) {
+            document.getElementById('soundStatus').textContent = text;
+        }
 
-            if (window.SmartDiaryMusicSynth.isPlaying) {
-                window.SmartDiaryMusicSynth.stop();
-                btn.textContent = '▶ Play Composition';
-                showToast('Composition paused.');
+        function setPlayButton(state) {
+            const btn = document.getElementById('btnPlayComposition');
+            btn.dataset.state = state;
+            btn.disabled = state === 'unavailable' || state === 'starting';
+            btn.textContent = state === 'playing' ? 'Stop' : (state === 'starting' ? 'Starting...' : 'Play');
+            btn.setAttribute('aria-pressed', state === 'playing' ? 'true' : 'false');
+        }
+
+        function renderMusicPreview() {
+            if (!synth) {
+                setPlayButton('unavailable');
+                setSoundStatus("Playback isn't available: the sound engine didn't load.");
+                return;
+            }
+            weekParams = buildWeek(allEntries);
+            renderSoundDays(weekParams.days);
+            renderSoundSummary(weekParams);
+
+            if (!AUDIO_SUPPORTED) {
+                setPlayButton('unavailable');
+                setSoundStatus("This browser can't play audio, but you can still read your week below.");
+            } else if (!weekParams.loggedDays) {
+                setPlayButton('unavailable');
+                setSoundStatus('Nothing to play yet. Write an entry this week and it starts the piece.');
             } else {
-                btn.textContent = '⏹ Stop Playing';
-                showToast('Playing this week\'s algorithmic composition...');
-                window.SmartDiaryMusicSynth.playWeeklyComposition(
-                    allEntries,
-                    canvas,
-                    (step, total, params) => {
-                        // step tick
-                    },
+                setPlayButton('ready');
+                setSoundStatus(`${weekParams.loggedDays} of 7 days written. Press Play to hear them. Nothing plays until you do.`);
+            }
+        }
+
+        function dayDescription(day) {
+            if (!day.entry) return `${day.name}: no entry`;
+            const parts = [day.mood ? MOOD_LABEL[day.mood] : 'no mood chosen'];
+            parts.push(day.sleep !== null ? `slept ${day.sleep} hours` : 'sleep not recorded');
+            parts.push(day.stress !== null ? `stress ${day.stress} out of 10` : 'stress not recorded');
+            parts.push(day.hours !== null ? `${day.hours} hours of study or work` : 'hours not recorded');
+            return `${day.name}: ${parts.join(', ')}`;
+        }
+
+        function renderSoundDays(days) {
+            const wrap = document.getElementById('soundDays');
+            wrap.replaceChildren();
+            days.forEach(day => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'sound-day' + (day.entry ? '' : ' is-empty') + (day.isToday ? ' is-today' : '');
+                btn.dataset.index = day.index;
+                btn.setAttribute('aria-pressed', 'false');
+                btn.setAttribute('aria-label', dayDescription(day));
+                if (day.mood) btn.dataset.mood = day.mood;
+
+                const lane = document.createElement('span');
+                lane.className = 'sound-lane';
+                lane.setAttribute('aria-hidden', 'true');
+                const mark = document.createElement('span');
+                mark.className = 'sound-mark';
+                if (!day.entry) {
+                    mark.classList.add('is-rest');
+                } else {
+                    if (day.sleep === null) mark.classList.add('sleep-missing');
+                    else mark.style.setProperty('--h', `${Math.min(100, 28 + (day.sleep / 12) * 72)}%`);
+                    if (!day.mood) mark.classList.add('mood-missing');
+                    if (day.stress !== null && day.stress >= 7) mark.classList.add('is-tense');
+                    if (day.stress === null) mark.classList.add('stress-missing');
+                }
+                lane.appendChild(mark);
+
+                const dots = document.createElement('span');
+                dots.className = 'sound-dots' + (day.entry && day.hours === null ? ' is-missing' : '');
+                dots.setAttribute('aria-hidden', 'true');
+                const dotCount = day.entry && day.hours !== null ? (day.hours < 2 ? 1 : day.hours < 5 ? 2 : 3) : 0;
+                for (let i = 0; i < dotCount; i++) dots.appendChild(document.createElement('i'));
+
+                const label = document.createElement('span');
+                label.className = 'sound-day-label';
+                label.setAttribute('aria-hidden', 'true');
+                label.innerHTML = `<strong>${day.name}</strong> ${Number(day.date.slice(8, 10))}`;
+
+                btn.append(lane, dots, label);
+                btn.onclick = () => selectSoundDay(day.index);
+                wrap.appendChild(btn);
+            });
+        }
+
+        function selectSoundDay(index) {
+            selectedDay = index;
+            document.querySelectorAll('.sound-day').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.index) === index)));
+            const day = weekParams.days[index];
+            const box = document.getElementById('soundDayDetail');
+            box.replaceChildren();
+            const h = document.createElement('h3');
+            h.className = 'sound-detail-title';
+            const when = new Date(day.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+            if (!day.entry) {
+                h.textContent = when;
+                const p = document.createElement('p');
+                p.textContent = 'No entry this day, so it adds nothing to the week\'s sound. Nothing is filled in for days you didn\'t write.';
+                box.append(h, p);
+                return;
+            }
+            h.textContent = `${when}: ${day.entry.title || 'Diary entry'}`;
+            const notes = [];
+            if (day.count > 1) {
+                const many = document.createElement('p');
+                many.className = 'sound-sub';
+                many.textContent = `You wrote ${day.count} entries this day. The latest one is used.`;
+                notes.push(many);
+            }
+            // Entries saved with crisis language keep their support line wherever they are shown.
+            if (day.entry.safety && day.entry.safety.level === 'crisis') {
+                const help = document.createElement('p');
+                help.className = 'sound-support';
+                help.innerHTML = 'If things feel heavy, you don&rsquo;t have to deal with it alone: Samaritans are free, any time, on <a href="tel:116123">116 123</a>. In immediate danger, call 999.';
+                notes.push(help);
+            }
+            const excerpt = document.createElement('p');
+            excerpt.className = 'sound-detail-text';
+            const text = day.entry.text || '';
+            excerpt.textContent = text.length > 240 ? text.slice(0, 240) + '...' : text;
+
+            const list = document.createElement('ul');
+            list.className = 'sound-detail-effects';
+            const item = (label, value, effect) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong></strong> <span class="val"></span><span class="eff"></span>`;
+                li.querySelector('strong').textContent = label;
+                li.querySelector('.val').textContent = value;
+                li.querySelector('.eff').textContent = effect;
+                if (value === 'Not recorded') li.classList.add('is-missing');
+                list.appendChild(li);
+            };
+            const left = ' → left out of the week\'s sound.';
+            item('Mood', day.mood ? MOOD_LABEL[day.mood] : 'Not recorded', day.mood ? ' → counts toward the week\'s key.' : left);
+            item('Sleep', day.sleep !== null ? `${day.sleep} hours` : 'Not recorded', day.sleep !== null ? ' → counts toward the tempo.' : left);
+            item('Stress', day.stress !== null ? `${day.stress} / 10` : 'Not recorded', day.stress !== null ? ' → counts toward the tension.' : left);
+            item('Study / work', day.hours !== null ? `${day.hours} hours` : 'Not recorded', day.hours !== null ? ' → counts toward the rhythm.' : left);
+            box.append(h, ...notes, excerpt, list);
+        }
+
+        function renderSoundSummary(params) {
+            const dl = document.getElementById('soundSummary');
+            // Musical choices come from the sound engine; they are only shown for values you recorded.
+            const music = synth && params.loggedDays ? synth.computeMusicParams(params.entries) : {};
+            const rows = [
+                ['Key', params.mood ? `${music.scaleName} (most often ${MOOD_LABEL[params.mood].toLowerCase()})` : 'No mood chosen this week, so the sound uses a neutral default'],
+                ['Tempo', params.avgSleep !== null ? `${music.bpm} BPM (average sleep ${params.avgSleep}h)` : 'Sleep not recorded this week, so the sound uses a neutral default'],
+                ['Tension', params.avgStress !== null ? `${music.tensionLevel} (average stress ${params.avgStress}/10)` : 'Stress not recorded this week, so the sound uses a neutral default'],
+                ['Rhythm', params.totalHours !== null ? `${music.rhythmComplexity} (${params.totalHours}h of study or work)` : 'Hours not recorded this week, so the rhythm stays gentle']
+            ];
+            dl.replaceChildren();
+            rows.forEach(([k, v]) => {
+                const dt = document.createElement('dt'); dt.textContent = k;
+                const dd = document.createElement('dd'); dd.textContent = v;
+                if (/not recorded|no mood/i.test(v)) dd.classList.add('is-missing');
+                dl.append(dt, dd);
+            });
+        }
+
+        // Only ever started by a click. The button says "Stop" only once audio is actually running.
+        async function togglePlayComposition() {
+            if (!synth || !AUDIO_SUPPORTED || !weekParams || !weekParams.loggedDays) return;
+            if (synth.isPlaying) {
+                synth.stop();   // the onEnd callback below updates the button and status
+                return;
+            }
+            setPlayButton('starting');
+            setSoundStatus('Starting playback...');
+            try {
+                synth.initAudio();
+                await synth.audioCtx.resume();
+                if (synth.audioCtx.state !== 'running') throw new Error('the browser did not allow audio to start');
+                let finished = false;
+                synth.playWeeklyComposition(weekParams.entries, null,
+                    (step, total) => { if (step >= total - 1) finished = true; },
                     () => {
-                        btn.textContent = '▶ Play Composition';
-                        showToast('Composition completed.');
-                    }
-                );
+                        setPlayButton('ready');
+                        setSoundStatus(finished ? 'Finished. Press Play to hear it again.' : 'Stopped.');
+                    });
+                setPlayButton('playing');
+                setSoundStatus(`Playing your week (${weekParams.loggedDays} of 7 days written)...`);
+            } catch (e) {
+                synth.stop();
+                setPlayButton(weekParams.loggedDays ? 'ready' : 'unavailable');
+                setSoundStatus(`Couldn't play: ${e.message}.`);
             }
         }
 
@@ -198,7 +404,7 @@
             const mode = getStoredUserMode();
 
             if (allEntries.length < 2) {
-                container.innerHTML = '<p class="empty-state">Log a few check-ins with sleep and stress numbers to calculate your statistical patterns.</p>';
+                container.innerHTML = '<p class="empty-state">Add sleep and stress to a few of your own entries and patterns will show up here.</p>';
                 adviceContainer.innerHTML = '<p class="empty-state">Personalized advice will appear as your logs accumulate.</p>';
                 return;
             }
@@ -206,6 +412,11 @@
             const res = await getInsightsAI(allEntries, mode);
 
             container.replaceChildren();
+            if (res.unavailable) {
+                container.innerHTML = '<p class="empty-state">Couldn&rsquo;t calculate patterns right now. Nothing has been guessed; try again later.</p>';
+                adviceContainer.replaceChildren();
+                return;
+            }
             if (res.insights && res.insights.length > 0) {
                 res.insights.forEach(ins => {
                     const block = document.createElement('div');
@@ -214,7 +425,8 @@
                     container.appendChild(block);
                 });
             } else {
-                container.innerHTML = '<p class="summary-text">No strong negative correlations detected this week. Your sleep and stress levels remain stable.</p>';
+                // Absence of a pattern is not evidence that things are steady.
+                container.innerHTML = '<p class="summary-text">No clear pattern in your logged numbers yet. That doesn\'t mean everything is steady; it may just need more days with sleep and stress recorded.</p>';
             }
 
             adviceContainer.replaceChildren();
@@ -246,7 +458,7 @@
             });
 
             if (!week.length) {
-                rows.innerHTML = '<p class="empty-state">No check-ins yet this week. Each one adds a note to your week.</p>';
+                rows.innerHTML = '<p class="empty-state">None of your own check-ins this week yet. Each one adds a note to your week.</p>';
                 return;
             }
 
