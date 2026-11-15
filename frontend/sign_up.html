@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
+    <title>Sign Up - Cadence</title>
+    <link rel="stylesheet" href="user_style.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <aside class="sidebar" aria-label="Primary Navigation">
+        <div>
+            <a class="brand" href="welcome.html" aria-label="Cadence, about the app"><svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true" focusable="false"><rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/><rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/><rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/></svg><span>Cadence</span></a>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pen"></use></svg><span class="nav-label">Today</span></a></li>
+                    <li><a href="entries.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span class="nav-label">All Entries</span></a></li>
+                    <li><a href="calendar.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg><span class="nav-label">Calendar</span></a></li>
+                    <li><a href="insights.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wave"></use></svg><span class="nav-label">Insights</span></a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Light / dark</span></button>
+            <a href="login.html" class="account-link session-link"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span class="nav-label">Log in</span></a>
+            <a href="sign_up.html" class="account-link signup-link active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign up</span></a>
+        </div>
+    </aside>
+
+    <main class="main-content" id="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading">Create Your Account</h1>
+        </div>
+        <p style="margin-bottom: 24px;">Sign up to start using Cadence.</p>
+        <p id="signup-session-notice" hidden>You are already signed in. Go to your diary or log out before creating another account.</p>
+
+        <form class="form-box" id="signup-form">
+            <label for="signup-username" style="font-size: 14px; font-weight: 600;">Username</label>
+            <input type="text" id="signup-username" required minlength="3" maxlength="32" autocomplete="username" placeholder="Choose a username" aria-describedby="signup-username-error">
+            <small class="field-error" id="signup-username-error" aria-live="polite"></small>
+
+            <label for="signup-email" style="font-size: 14px; font-weight: 600;">Email</label>
+            <input type="email" id="signup-email" required maxlength="254" autocomplete="email" placeholder="you@example.com" aria-describedby="signup-email-error">
+            <small class="field-error" id="signup-email-error" aria-live="polite"></small>
+
+            <label for="signup-password" style="font-size: 14px; font-weight: 600;">Password</label>
+            <input type="password" id="signup-password" required maxlength="72" autocomplete="new-password" placeholder="Create a password" aria-describedby="signup-password-error">
+            <small class="field-error" id="signup-password-error" aria-live="polite"></small>
+
+            <label for="signup-confirm-password" style="font-size: 14px; font-weight: 600;">Confirm password</label>
+            <input type="password" id="signup-confirm-password" required maxlength="72" autocomplete="new-password" placeholder="Re-enter your password" aria-describedby="signup-confirm-password-error">
+            <small class="field-error" id="signup-confirm-password-error" aria-live="polite"></small>
+
+            <button type="submit" class="save-btn" style="width: 100%;">Sign Up</button>
+        </form>
+        <p class="account-switch">Already have an account? <a href="login.html">Log in</a></p>
+    </main>
+
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+    <script src="icons.js"></script>
+    <script src="account_nav.js"></script>
+    <script>
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function toggleDarkMode() {
+            const isDark = cadenceToggleTheme() === 'dark';
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        const signupForm = document.getElementById('signup-form');
+        const signupUsername = document.getElementById('signup-username');
+        const signupEmail = document.getElementById('signup-email');
+        const signupPassword = document.getElementById('signup-password');
+        const signupConfirmPassword = document.getElementById('signup-confirm-password');
+        const usernamePattern = /^[A-Za-z0-9_]{3,32}$/;
+        function emailIsValid(value) {
+            if (typeof value !== 'string' || value !== value.trim() || value.length > 254 || !/^[\x00-\x7F]+$/.test(value)) return false;
+            const parts = value.split('@');
+            if (parts.length !== 2) return false;
+            const [local, domain] = parts;
+            if (!local || local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..')
+                || !/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)) return false;
+            const labels = domain.split('.');
+            return labels.length >= 2 && labels.every(label => label.length >= 1 && label.length <= 63
+                && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(label));
+        }
+        const passwordPattern = password => password.length > 8
+            && new TextEncoder().encode(password).length <= 72
+            && /[A-Z]/.test(password)
+            && /[a-z]/.test(password)
+            && /[0-9]/.test(password)
+            && Array.from(password).some(char => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".includes(char));
+
+        signupForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const usernameValid = usernamePattern.test(signupUsername.value);
+            const emailValid = emailIsValid(signupEmail.value);
+            const passwordValid = passwordPattern(signupPassword.value);
+            const passwordsMatch = signupPassword.value === signupConfirmPassword.value;
+            document.getElementById('signup-username-error').textContent = usernameValid ? '' : 'Use 3–32 characters: letters, numbers, or underscores.';
+            document.getElementById('signup-email-error').textContent = emailValid ? '' : 'Enter a valid email address.';
+            document.getElementById('signup-password-error').textContent = passwordValid ? '' : 'Use more than 8 characters with uppercase, lowercase, a number, and punctuation.';
+            document.getElementById('signup-confirm-password-error').textContent = passwordsMatch ? '' : 'Passwords do not match.';
+            if (!usernameValid || !emailValid || !passwordValid || !passwordsMatch) return;
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/signup-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: signupUsername.value, email: signupEmail.value, password: signupPassword.value })
+                });
+                if (!response.ok) throw new Error('The account server returned an error.');
+                const result = await response.json();
+                showToast(result.message);
+            } catch (error) {
+                showToast('Could not reach the account server. Start it with: python security.py');
+            }
+        });
+
+        signupUsername.addEventListener('input', () => document.getElementById('signup-username-error').textContent = '');
+        signupEmail.addEventListener('input', () => document.getElementById('signup-email-error').textContent = '');
+        signupPassword.addEventListener('input', () => document.getElementById('signup-password-error').textContent = '');
+        signupConfirmPassword.addEventListener('input', () => document.getElementById('signup-confirm-password-error').textContent = '');
+
+    </script>
+</body>
+</html>

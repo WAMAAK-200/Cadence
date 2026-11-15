@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
+    <title>Today - Cadence</title>
+    <link rel="stylesheet" href="user_style.css">
+</head>
+<body class="flow-page">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <aside class="sidebar" aria-label="Primary Navigation">
+        <div>
+            <a class="brand" href="welcome.html" aria-label="Cadence, about the app"><svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true" focusable="false"><rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/><rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/><rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/></svg><span>Cadence</span></a>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html" class="active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pen"></use></svg><span class="nav-label">Today</span></a></li>
+                    <li><a href="entries.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span class="nav-label">All Entries</span></a></li>
+                    <li><a href="calendar.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg><span class="nav-label">Calendar</span></a></li>
+                    <li><a href="insights.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wave"></use></svg><span class="nav-label">Insights</span></a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg><span class="nav-label">Display &amp; accessibility</span></button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Light / dark</span></button>
+            <a href="account.html" class="account-link" id="navAccountLink"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span class="nav-label">Log in</span></a>
+            <a href="sign_up.html" class="account-link" id="navSignUpLink"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign up</span></a>
+        </div>
+    </aside>
+
+    <!-- Style & Accessibility Settings Panel -->
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Display and accessibility options">
+        <h3>
+            <span>Display &amp; accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
+        </div>
+
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-text-size"></use></svg><span class="nav-label">Larger text</span></button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-contrast"></use></svg><span class="nav-label">High contrast</span></button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spacing"></use></svg><span class="nav-label">Wider letter spacing</span></button>
+    </div>
+
+    <main class="main-content" id="main-content">
+        <!-- Crisis Safety Alert Banner (Hidden by default, shown if crisis keywords detected) -->
+        <div class="crisis-banner" id="crisisBanner" style="display: none;" role="alert">
+            <strong>You don't have to deal with this on your own.</strong>
+            <p id="crisisMessageText">It sounds like things are really hard right now. You can call Samaritans free, any time, on <a href="tel:116123">116 123</a>, or contact your university / GP wellbeing service. If you're in immediate danger, call 999.</p>
+        </div>
+
+        <div class="top-actions">
+            <h1 class="date-heading"><span class="date-sub">Today</span><span id="today-date">Saturday 14 November</span></h1>
+            <button type="button" class="smart-toggle-btn quiet-link" aria-expanded="false" aria-controls="smartDrawer" onclick="toggleDrawer()">Need a prompt?</button>
+        </div>
+
+
+        <!-- Guided entry flow: 1 Check in -> 2 Mood-aware response -> 3 Diary.
+             All three steps live on this page, so draft text and edited values survive Back/Forward.
+             Nothing is saved until the explicit "Save entry" button in step 3. -->
+        <p class="sr-only" id="flowAnnouncer" aria-live="polite" aria-atomic="true"></p>
+
+        <!-- Step 1: Check in -->
+        <section class="flow-step" id="stepCheckin" aria-labelledby="checkinHeading">
+            <div class="flow-topline">
+                <p class="flow-progress"><span>Step 1 of 3</span><span class="flow-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></span></p>
+            </div>
+            <p class="flow-eyebrow">A moment for you</p>
+            <h2 class="flow-heading flow-heading-hero" id="checkinHeading" tabindex="-1">How are you, really?</h2>
+            <p class="flow-support">Pick whatever fits best right now. There's no wrong answer, and you can skip it.</p>
+
+            <div class="mood-bar flow-moods" role="group" aria-labelledby="checkinHeading">
+                <button type="button" class="mood-pill mood-choice" data-mood="happy" aria-pressed="false" onclick="selectMood(this)"><svg class="mood-face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="9" cy="10" r="1.3"/><circle cx="15" cy="10" r="1.3"/><path d="M7.5 14c1.2 2 2.8 3 4.5 3s3.3-1 4.5-3"/></svg><span class="mood-label">Happy</span></button>
+                <button type="button" class="mood-pill mood-choice" data-mood="calm" aria-pressed="false" onclick="selectMood(this)"><svg class="mood-face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.3 10.2c.8.8 2 .8 2.8 0M13.9 10.2c.8.8 2 .8 2.8 0"/><path d="M9 15c1 .7 2 1 3 1s2-.3 3-1"/></svg><span class="mood-label">Calm</span></button>
+                <button type="button" class="mood-pill mood-choice" data-mood="reflective" aria-pressed="false" onclick="selectMood(this)"><svg class="mood-face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="10" cy="9.5" r="1.3"/><circle cx="16" cy="9.5" r="1.3"/><path d="M9.5 15.5h5"/></svg><span class="mood-label">Reflective</span></button>
+                <button type="button" class="mood-pill mood-choice" data-mood="stressed" aria-pressed="false" onclick="selectMood(this)"><svg class="mood-face" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 8.5l2.5 1.2M16.5 8.5L14 9.7"/><path d="M7.5 16c.8-.8 1.5-.8 2.3 0s1.5.8 2.2 0 1.5-.8 2.2 0 1.5.8 2.3 0"/></svg><span class="mood-label">Stressed</span></button>
+            </div>
+            <p class="flow-hint" id="checkinHint" role="status"></p>
+
+            <div class="flow-actions">
+                <button type="button" class="save-btn" id="checkinContinue" onclick="continueFromCheckin()">Continue</button>
+                <button type="button" class="btn-secondary" id="checkinSkip" onclick="skipToDiary()">Skip to diary</button>
+            </div>
+        </section>
+
+        <!-- Step 2: Mood-aware response (wording set from MOOD_COPY below; deterministic and offline) -->
+        <section class="flow-step" id="stepRespond" aria-labelledby="respondHeading" hidden>
+            <div class="flow-topline">
+                <button type="button" class="flow-back" onclick="goBack()"><span aria-hidden="true">&larr;</span> Back</button>
+                <p class="flow-progress"><span>Step 2 of 3</span><span class="flow-dots" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span></p>
+            </div>
+            <p class="flow-mood-chip" id="respondMoodChip"></p>
+            <h2 class="flow-heading" id="respondHeading" tabindex="-1"></h2>
+            <p class="flow-prompt" id="respondPrompt"></p>
+            <p class="flow-support" id="respondSupport"></p>
+
+            <div class="flow-actions">
+                <button type="button" class="save-btn" id="respondWrite" onclick="writeAboutIt()">Write about it</button>
+                <button type="button" class="btn-secondary" id="respondPause" aria-expanded="false" aria-controls="pausePanel" onclick="togglePause()">Take a quiet pause</button>
+                <button type="button" class="btn-secondary" id="respondStraight" onclick="goStraightToDiary()">Go straight to diary</button>
+            </div>
+
+            <!-- Optional, untimed pause. Never blocks the buttons above. -->
+            <div class="pause-panel" id="pausePanel" hidden>
+                <p><strong>No timer, no rush.</strong> If it helps:</p>
+                <ol>
+                    <li>Breathe in slowly through your nose.</li>
+                    <li>Let the breath out a little longer than it came in.</li>
+                    <li>Notice one thing you can see and one thing you can hear.</li>
+                </ol>
+                <p>Stay as long as you like. Carry on whenever you're ready.</p>
+                <button type="button" class="btn-secondary" onclick="togglePause(false)">Close pause</button>
+            </div>
+        </section>
+
+        <!-- Step 3: Diary -->
+        <section class="flow-step" id="stepDiary" aria-labelledby="diaryHeading" hidden>
+            <div class="flow-topline">
+                <button type="button" class="flow-back" onclick="goBack()"><span aria-hidden="true">&larr;</span> Back</button>
+                <p class="flow-progress"><span>Step 3 of 3</span><span class="flow-dots" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span></p>
+            </div>
+            <h2 class="flow-heading" id="diaryHeading" tabindex="-1">Your diary</h2>
+            <p class="flow-mood-line">
+                <span id="diaryMoodText">No mood chosen</span>
+                <button type="button" class="link-btn" onclick="showStep(1)">Change</button>
+            </p>
+
+            <!-- Suggested prompt: shown next to the editor, never inserted into the entry text -->
+            <aside class="prompt-suggestion" id="promptSuggestion" aria-label="Writing suggestion" hidden>
+                <span class="suggestion-label">Suggestion</span>
+                <p id="promptSuggestionText"></p>
+                <button type="button" class="link-btn" onclick="hideSuggestion()">Hide suggestion</button>
+            </aside>
+
+            <!-- Voice & Smart AI Check-in Action Bar -->
+            <div class="voice-action-bar">
+                <button type="button" class="btn-voice" id="btnVoiceRecord" onclick="toggleVoiceRecording()">
+                    <span id="micIcon" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-mic"></use></svg></span>
+                    <span id="voiceBtnText">Voice Check-In</span>
+                </button>
+                <button type="button" class="btn-ai-extract" id="btnAiExtract" onclick="extractTelemetryFromContent()" aria-describedby="helpFillNote">
+                    Help fill this in
+                </button>
+                <span id="voiceStatus" class="voice-status" aria-live="polite"></span>
+            </div>
+
+            <p class="help-fill-note" id="helpFillNote">Reads what you've written and suggests sleep, stress and hours. Suggestions are marked and you can change or clear any of them.</p>
+
+            <!-- Shown when the entry changes after "Help fill this in": the suggestions may no longer match. -->
+            <div class="stale-notice" id="staleNotice" role="status" hidden>
+                <p><strong>Your entry has changed since the suggestions were made.</strong> They might not match any more.</p>
+                <div class="stale-actions">
+                    <button type="button" class="btn-secondary" onclick="extractTelemetryFromContent()">Suggest again</button>
+                    <button type="button" class="btn-secondary" onclick="keepSuggestions()">Keep them</button>
+                    <button type="button" class="btn-secondary" onclick="removeSuggestions()">Remove them</button>
+                </div>
+            </div>
+
+            <!-- Dialect terms detected badge container -->
+            <div id="dialectTermsContainer" class="dialect-terms-list" style="display: none; margin-bottom: 12px;"></div>
+
+            <!-- AI Spoken Reply Card -->
+            <div id="spokenReplyCard" class="spoken-reply-card" style="display: none;">
+                <div class="spoken-reply-label">A note back</div>
+                <p id="spokenReplyText"></p>
+            </div>
+
+            <label for="entryTitle" class="sr-only">Entry Title</label>
+            <input type="text" id="entryTitle" class="entry-title-input" maxlength="120" placeholder="Title (optional)">
+
+            <label for="editor" class="sr-only">Diary Entry Content</label>
+            <textarea id="editor" class="borderless-editor" maxlength="10000" placeholder="Write whatever's on your mind. A few lines is plenty."></textarea>
+
+            <div class="editor-footer">
+                <span id="word-count" aria-live="polite">0 words</span>
+                <span id="auto-save-status" aria-live="polite"></span>
+            </div>
+
+            <div class="tag-container">
+                <label for="tagInput" class="sr-only">Add tag</label>
+                <input type="text" id="tagInput" class="tag-input" maxlength="30" placeholder="Add a tag, then Enter (e.g. #revision, #work)" onkeydown="handleTagInput(event)">
+                <div id="activeTags" class="active-tags" aria-live="polite"></div>
+            </div>
+
+            <!-- Optional structured details. Untouched sliders are NOT saved as measurements. -->
+            <details class="telemetry-section details-section" id="detailsSection">
+                <summary class="telemetry-toggle-header">
+                    <span>Add details</span>
+                    <span class="details-hint" id="detailsSummaryHint">Nothing added</span>
+                </summary>
+                <p class="details-note">Only the details you set are saved. Leave any you don't want to share.</p>
+                <div class="details-mode">
+                    <label for="modeSwitcherSelect">I'm logging as</label>
+                    <select id="modeSwitcherSelect" class="mode-select" onchange="handleModeChange(this.value)">
+                        <option value="student">a student</option>
+                        <option value="employed">someone working</option>
+                        <option value="unemployed">someone between jobs or recovering</option>
+                    </select>
+                    <span class="sr-only" id="modeBadgeDisplay">student</span>
+                </div>
+                <div class="telemetry-grid" id="telemetryGrid">
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label for="sleepSlider">Sleep (Hours)</label>
+                            <span class="slider-val-badge" id="sleepVal">Not added</span>
+                        </div>
+                        <input type="range" id="sleepSlider" min="0" max="14" step="0.5" value="7" data-touched="false" data-unit="h" data-badge="sleepVal">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label for="stressSlider">Stress Level (1-10)</label>
+                            <span class="slider-val-badge" id="stressVal">Not added</span>
+                        </div>
+                        <input type="range" id="stressSlider" min="1" max="10" step="1" value="5" data-touched="false" data-unit="" data-badge="stressVal">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label for="fatigueSlider">Fatigue / Pain (1-10)</label>
+                            <span class="slider-val-badge" id="fatigueVal">Not added</span>
+                        </div>
+                        <input type="range" id="fatigueSlider" min="1" max="10" step="1" value="5" data-touched="false" data-unit="" data-badge="fatigueVal">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <label for="hoursSlider" id="hoursLabel">Study Hours</label>
+                            <span class="slider-val-badge" id="hoursVal">Not added</span>
+                        </div>
+                        <input type="range" id="hoursSlider" min="0" max="16" step="0.5" value="4" data-touched="false" data-unit="h" data-badge="hoursVal">
+                    </div>
+                </div>
+                <button type="button" class="link-btn details-clear" onclick="clearDetails()">Clear details</button>
+            </details>
+
+            <p class="form-error" id="saveError" role="alert" hidden></p>
+            <p class="save-status" id="saveStatus" role="status"></p>
+
+            <div class="save-bar">
+                <button type="button" class="btn-secondary" onclick="readEntryAloud()" aria-label="Read current entry aloud">Read aloud</button>
+                <button type="button" class="btn-secondary" id="newCheckinBtn" onclick="startNewCheckin()" hidden>Start a new check-in</button>
+                <button type="button" class="save-btn" id="saveEntryBtn" onclick="saveCurrentEntry()">Save entry</button>
+            </div>
+        </section>
+
+        <!-- This week as one bar of music: a filled note for each day with an entry, coloured by mood -->
+        <section class="week-bar" aria-labelledby="week-bar-label">
+            <h2 class="week-bar-label" id="week-bar-label">Your week so far</h2>
+            <p class="week-bar-note" id="weekBarNote"></p>
+            <ol class="week-beats" id="weekBeats"></ol>
+        </section>
+    </main>
+
+    <!-- Writing prompt drawer -->
+    <aside class="smart-drawer" id="smartDrawer" aria-label="Writing prompt">
+        <div class="drawer-header">
+            <h3>Stuck for words?</h3>
+            <button class="close-drawer" aria-label="Close writing prompt" onclick="toggleDrawer()">&times;</button>
+        </div>
+
+        <div class="drawer-widget">
+            <h4>Today's prompt</h4>
+            <p class="drawer-prompt" id="dailyPrompt">What is one small win from today that you want to remember next month?</p>
+            <button class="prompt-btn" onclick="usePrompt()">Start with this</button>
+            <button class="prompt-btn" style="margin-top: 6px; background: transparent;" onclick="refreshDailyPrompt()">New prompt</button>
+        </div>
+    </aside>
+
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="icons.js"></script>
+    <script src="music_synth.js"></script>
+    <script src="entry_storage.js"></script>
+    <script>
+        let currentSelectedMood = '';   // '' = no mood chosen. Never filled in for the user.
+        let currentTags = [];
+        let isRecordingVoice = false;
+        let speechRecognition = null;
+        let lastExtraction = null;       // latest Auto-Fill result, used for its safety flag on save
+        let isSaving = false;
+        let justSaved = false;           // true right after a save, until the user starts a new draft
+        let extractedText = null;        // the entry text that "Help fill this in" last read
+        let extractionStale = false;     // entry changed since then: suggestions need review
+        let aiTags = new Set();          // tags added by the helper (not typed by the user)
+
+        // ---- Guided flow state ----
+        // Step 1 Check in, 2 Mood-aware response, 3 Diary. Everything stays in the DOM,
+        // so moving Back/Forward keeps typed text, tags and slider values.
+        // suggestionKind: 'mood' (follows the current mood), 'drawer' (the prompt drawer's text) or ''.
+        const flow = { step: 1, viaRespond: false, suggestionKind: '', drawerText: '' };
+        const STEP_IDS = { 1: 'stepCheckin', 2: 'stepRespond', 3: 'stepDiary' };
+        const STEP_NAMES = { 1: 'How are you feeling?', 2: 'Mood-aware response', 3: 'Your diary' };
+
+        // Wording per mood. Plain, non-clinical, no promises, no pressure to feel better.
+        const MOOD_COPY = {
+            happy: {
+                label: 'Happy',
+                heading: 'Good to hear',
+                prompt: 'What made today feel good?',
+                support: "Big or small, it's worth keeping a note of.",
+                suggestion: 'What made today feel good? Big or small, it counts.'
+            },
+            calm: {
+                label: 'Calm',
+                heading: 'A steady one',
+                prompt: "What's helped things feel settled?",
+                support: 'A few lines is plenty.',
+                suggestion: "What's helped things feel settled today?"
+            },
+            reflective: {
+                label: 'Reflective',
+                heading: 'Room to think',
+                prompt: "What's been on your mind?",
+                support: 'Write it however it comes out.',
+                suggestion: "What's been on your mind? There's no right way to write it."
+            },
+            stressed: {
+                label: 'Stressed',
+                heading: "Let's take this gently",
+                prompt: "What's weighing on you?",
+                support: 'Share as much as you like.',
+                suggestion: "What's weighing on you? Share as much as you like."
+            }
+        };
+
+        function showStep(n, options = {}) {
+            const { push = true, focus = true } = options;
+            Object.entries(STEP_IDS).forEach(([step, id]) => {
+                document.getElementById(id).hidden = Number(step) !== n;
+            });
+            flow.step = n;
+            if (n === 2) renderRespondStep();
+            if (n === 3) renderDiaryStep();
+            document.getElementById('flowAnnouncer').textContent = `Step ${n} of 3: ${STEP_NAMES[n]}`;
+            if (push && window.history && history.pushState) history.pushState({ step: n }, '', `#step-${n}`);
+            if (focus) {
+                const heading = document.querySelector(`#${STEP_IDS[n]} .flow-heading`);
+                if (heading) heading.focus({ preventScroll: false });
+            }
+        }
+
+        // Browser Back/Forward move between steps too (drafts are untouched).
+        window.addEventListener('popstate', event => {
+            const step = (event.state && event.state.step) || 1;
+            showStep(step, { push: false });
+        });
+
+        function continueFromCheckin() {
+            const hint = document.getElementById('checkinHint');
+            if (!currentSelectedMood) {
+                hint.textContent = 'Choose how you feel, or use "Skip to diary".';
+                return;
+            }
+            hint.textContent = '';
+            showStep(2);
+        }
+
+        function skipToDiary() {
+            // Skipping keeps whatever mood (if any) the user picked; it never adds one.
+            flow.viaRespond = false;
+            flow.suggestionKind = '';
+            showStep(3);
+        }
+
+        function writeAboutIt() {
+            flow.viaRespond = true;
+            flow.suggestionKind = 'mood';
+            showStep(3);
+        }
+
+        function goStraightToDiary() {
+            flow.viaRespond = true;
+            flow.suggestionKind = '';  // blank editor, no prompt
+            showStep(3);
+        }
+
+        function currentSuggestion() {
+            if (flow.suggestionKind === 'mood') return currentSelectedMood ? MOOD_COPY[currentSelectedMood].suggestion : '';
+            if (flow.suggestionKind === 'drawer') return flow.drawerText;
+            return '';
+        }
+
+        function goBack() {
+            if (flow.step === 3) showStep(flow.viaRespond && currentSelectedMood ? 2 : 1);
+            else if (flow.step === 2) showStep(1);
+        }
+
+        function togglePause(force) {
+            const panel = document.getElementById('pausePanel');
+            const btn = document.getElementById('respondPause');
+            const open = typeof force === 'boolean' ? force : panel.hidden;
+            panel.hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+            if (!open) btn.focus();
+        }
+
+        function moodChipHTML(mood) {
+            const copy = MOOD_COPY[mood];
+            return copy ? `<span class="note" aria-hidden="true"></span>${copy.label}` : '';
+        }
+
+        function renderRespondStep() {
+            const copy = MOOD_COPY[currentSelectedMood];
+            if (!copy) return;
+            const chip = document.getElementById('respondMoodChip');
+            chip.dataset.mood = currentSelectedMood;
+            chip.innerHTML = moodChipHTML(currentSelectedMood);
+            document.getElementById('respondHeading').textContent = copy.heading;
+            document.getElementById('respondPrompt').textContent = copy.prompt;
+            document.getElementById('respondSupport').textContent = copy.support;
+            // close the pause quietly (no focus move) when the wording is refreshed
+            document.getElementById('pausePanel').hidden = true;
+            document.getElementById('respondPause').setAttribute('aria-expanded', 'false');
+        }
+
+        function renderDiaryStep() {
+            const moodText = document.getElementById('diaryMoodText');
+            const copy = MOOD_COPY[currentSelectedMood];
+            if (copy) {
+                moodText.dataset.mood = currentSelectedMood;
+                moodText.innerHTML = `Feeling: <span class="flow-mood-chip inline" data-mood="${currentSelectedMood}">${moodChipHTML(currentSelectedMood)}</span>`;
+            } else {
+                delete moodText.dataset.mood;
+                moodText.textContent = 'No mood chosen';
+            }
+            const box = document.getElementById('promptSuggestion');
+            const editor = document.getElementById('editor');
+            const suggestion = currentSuggestion();
+            if (suggestion) {
+                document.getElementById('promptSuggestionText').textContent = suggestion;
+                box.hidden = false;
+                editor.setAttribute('aria-describedby', 'promptSuggestionText');
+            } else {
+                box.hidden = true;
+                editor.removeAttribute('aria-describedby');
+            }
+        }
+
+        // Keep step 2 wording and the step 3 suggestion in line with the mood as it is now.
+        function refreshMoodGuidance() {
+            if (currentSelectedMood) renderRespondStep();
+            renderDiaryStep();
+        }
+
+        function hideSuggestion() {
+            flow.suggestionKind = '';
+            renderDiaryStep();
+            document.getElementById('editor').focus();
+        }
+
+        // ---- Optional details (sliders) ----
+        // A slider only counts once the user moves it (or confirms an Auto-Fill value).
+        const DETAIL_SLIDERS = ['sleepSlider', 'stressSlider', 'fatigueSlider', 'hoursSlider'];
+
+        function setSliderValue(slider, value, source) {
+            slider.value = value;
+            slider.dataset.touched = 'true';
+            slider.dataset.source = source;
+            renderSliderBadge(slider);
+            updateDetailsHint();
+        }
+
+        function renderSliderBadge(slider) {
+            const unit = slider.dataset.unit || '';
+            let suffix = '';
+            if (slider.dataset.source === 'ai') suffix = extractionStale ? ' · suggested earlier, check this' : ' · suggested from your words';
+            document.getElementById(slider.dataset.badge).textContent = `${slider.value}${unit}${suffix}`;
+            slider.closest('.slider-group').classList.toggle('is-stale', slider.dataset.source === 'ai' && extractionStale);
+        }
+
+        function updateDetailsHint() {
+            const count = DETAIL_SLIDERS.filter(id => document.getElementById(id).dataset.touched === 'true').length;
+            document.getElementById('detailsSummaryHint').textContent = count ? `${count} added` : 'Nothing added';
+        }
+
+        function clearDetails() {
+            DETAIL_SLIDERS.forEach(id => {
+                const slider = document.getElementById(id);
+                slider.dataset.touched = 'false';
+                delete slider.dataset.source;
+                document.getElementById(slider.dataset.badge).textContent = 'Not added';
+            });
+            updateDetailsHint();
+        }
+
+        // Returns only measurements the user provided or confirmed; everything else is null.
+        function collectDetails(mode) {
+            const read = (id, parse) => {
+                const s = document.getElementById(id);
+                return s.dataset.touched === 'true' ? parse(s.value) : null;
+            };
+            const sleepHours = read('sleepSlider', parseFloat);
+            const hours = read('hoursSlider', parseFloat);
+            return {
+                sleepHours,
+                sleepQuality: sleepHours === null ? null : (sleepHours >= 7 ? 'good' : (sleepHours >= 5 ? 'ok' : 'poor')),
+                stress: read('stressSlider', v => parseInt(v, 10)),
+                fatigue: read('fatigueSlider', v => parseInt(v, 10)),
+                studyHours: mode === 'student' ? hours : null,
+                workHours: mode === 'employed' ? hours : null
+            };
+        }
+
+        DETAIL_SLIDERS.forEach(id => {
+            document.getElementById(id).addEventListener('input', event => setSliderValue(event.target, event.target.value, 'user'));
+        });
+
+        function handleModeChange(newMode) {
+            setStoredUserMode(newMode);
+            applyModeToUI(newMode);
+            showToast(`Switched to ${newMode[0].toUpperCase() + newMode.slice(1)} Mode`);
+        }
+
+        function applyModeToUI(mode) {
+            const badge = document.getElementById('modeBadgeDisplay');
+            const select = document.getElementById('modeSwitcherSelect');
+            const hoursLabel = document.getElementById('hoursLabel');
+
+            if (badge) badge.textContent = mode;
+            if (select) select.value = mode;
+
+            if (hoursLabel) {
+                if (mode === 'student') hoursLabel.textContent = 'Study Hours';
+                else if (mode === 'employed') hoursLabel.textContent = 'Work Hours';
+                else hoursLabel.textContent = 'Activity / Recovery Hours';
+            }
+        }
+
+        function selectMood(button) {
+            const wasSelected = button.classList.contains('selected');
+            document.querySelectorAll('.mood-pill').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.setAttribute('aria-pressed', 'false');
+            });
+            // Tapping the selected mood again clears it, so "no mood" is always reachable.
+            if (wasSelected) {
+                currentSelectedMood = '';
+                delete document.body.dataset.flowMood;
+                refreshMoodGuidance();
+                return;
+            }
+            button.classList.add('selected');
+            button.setAttribute('aria-pressed', 'true');
+            currentSelectedMood = button.dataset.mood;
+            document.body.dataset.flowMood = currentSelectedMood;   // subtle accent for the rest of the flow
+            document.getElementById('checkinHint').textContent = '';
+            refreshMoodGuidance();
+
+            // Musical auditory feedback: play tone matching the mood
+            const notes = { happy: 392.00, calm: 329.63, reflective: 293.66, stressed: 220.00 };
+            if (window.SmartDiaryMusicSynth && notes[currentSelectedMood]) {
+                window.SmartDiaryMusicSynth.playTone(notes[currentSelectedMood], 0.35, 'sine', currentSelectedMood === 'stressed' ? 0.4 : 0);
+            }
+        }
+
+        function handleTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                let val = event.target.value.trim();
+                if (!val) return;
+                if (!val.startsWith('#')) val = '#' + val;
+                if (!currentTags.includes(val) && currentTags.length < 20) {
+                    currentTags.push(val);
+                    renderTags();
+                }
+                event.target.value = '';
+            }
+        }
+
+        function removeTag(tagToRemove) {
+            currentTags = currentTags.filter(t => t !== tagToRemove);
+            renderTags();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('activeTags');
+            container.replaceChildren();
+            currentTags.forEach(t => {
+                const pill = document.createElement('span');
+                pill.className = 'tag-pill' + (aiTags.has(t) ? ' is-suggested' : '') + (aiTags.has(t) && extractionStale ? ' is-stale' : '');
+                pill.textContent = t;
+                if (aiTags.has(t)) pill.title = extractionStale ? 'Suggested from earlier text. Check it.' : 'Suggested from your words';
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'tag-remove';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.setAttribute('aria-label', `Remove tag ${t}`);
+                removeBtn.onclick = () => removeTag(t);
+                pill.appendChild(removeBtn);
+                container.appendChild(pill);
+            });
+        }
+
+        // ---- Speech Recognition & Voice Check-In ----
+        // Browser speech-to-text. If it is missing or fails we say so plainly; typing always works.
+        const VOICE_UNAVAILABLE = "Voice input isn't available here right now. Typing works as normal.";
+
+        function setVoiceUnavailable(reason) {
+            const btn = document.getElementById('btnVoiceRecord');
+            btn.disabled = true;
+            btn.setAttribute('aria-disabled', 'true');
+            document.getElementById('voiceStatus').textContent = reason ? `${VOICE_UNAVAILABLE} (${reason})` : VOICE_UNAVAILABLE;
+        }
+
+        function initSpeechRecognition() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) return null;
+            const rec = new SpeechRec();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-GB';
+
+            // Spoken words are added after anything already typed, never replacing it.
+            let baseText = '';
+            rec.onstart = () => {
+                const current = document.getElementById('editor').value;
+                baseText = current ? current.replace(/\s*$/, ' ') : '';
+            };
+            rec.onresult = event => {
+                let fullTranscript = '';
+                for (let i = 0; i < event.results.length; i++) {
+                    fullTranscript += event.results[i][0].transcript;
+                }
+                document.getElementById('editor').value = baseText + fullTranscript;
+                updateWordCount();
+            };
+
+            rec.onerror = event => {
+                console.warn('Speech recognition error:', event.error);
+                stopVoiceRecording();
+                if (['not-allowed', 'service-not-allowed', 'network', 'audio-capture'].includes(event.error)) {
+                    setVoiceUnavailable(event.error);
+                } else {
+                    showToast('Voice input stopped: ' + event.error);
+                }
+            };
+
+            rec.onend = () => {
+                if (isRecordingVoice) stopVoiceRecording();
+            };
+
+            return rec;
+        }
+
+        function toggleVoiceRecording() {
+            if (isRecordingVoice) {
+                stopVoiceRecording();
+            } else {
+                startVoiceRecording();
+            }
+        }
+
+        function startVoiceRecording() {
+            if (!speechRecognition) speechRecognition = initSpeechRecognition();
+            if (!speechRecognition) {
+                setVoiceUnavailable('not supported in this browser');
+                return;
+            }
+            try {
+                speechRecognition.start();
+                isRecordingVoice = true;
+                const btn = document.getElementById('btnVoiceRecord');
+                const text = document.getElementById('voiceBtnText');
+                const status = document.getElementById('voiceStatus');
+                btn.classList.add('recording');
+                text.textContent = 'Listening (Tap to Finish)...';
+                status.textContent = 'Listening...';
+            } catch (e) {
+                setVoiceUnavailable('could not start');
+            }
+        }
+
+        function stopVoiceRecording() {
+            if (speechRecognition && isRecordingVoice) {
+                try { speechRecognition.stop(); } catch (e) {}
+            }
+            isRecordingVoice = false;
+            const btn = document.getElementById('btnVoiceRecord');
+            const text = document.getElementById('voiceBtnText');
+            const status = document.getElementById('voiceStatus');
+            btn.classList.remove('recording');
+            text.textContent = 'Voice Check-In';
+            if (!btn.disabled) status.textContent = '';
+        }
+
+        // ---- Crisis language check (runs in the browser, so it never depends on the AI) ----
+        // Mirrors the keyword net in ai_backend/core.py. Deliberately broad.
+        const CRISIS_RE = new RegExp([
+            "\\bkill(ing)? my ?self\\b", "\\bsuicid", "\\bend (it all|my life)\\b", "\\bself[- ]?harm",
+            "\\bhurt(ing)? my ?self\\b", "\\bcut(ting)? my ?self\\b", "\\bwant(s)? to die\\b",
+            "\\b(don'?t|do not|divvent|dinnet|divn'?t) want to (be here|live|wake up)\\b",
+            "\\bbetter off without (me|us)\\b", "\\bno (point|reason) (in )?(living|being alive|going on)\\b"
+        ].join('|'), 'i');
+
+        function looksLikeCrisis(text) {
+            return CRISIS_RE.test(String(text).replace(/[‘’]/g, "'"));
+        }
+
+        function showCrisisSupport() {
+            const banner = document.getElementById('crisisBanner');
+            banner.style.display = 'flex';
+        }
+
+        // ---- Smart AI Extraction (review contract) ----
+        // Fills only details the user hasn't set, never changes a chosen mood, and is
+        // honest when the extraction service can't be reached.
+        async function extractTelemetryFromContent() {
+            const text = document.getElementById('editor').value.trim();
+            if (!text) {
+                showToast('Please type or record a check-in first.');
+                return;
+            }
+
+            showToast('Reading your entry...');
+            const mode = getStoredUserMode();
+            const extraction = await extractCheckinAI(text, mode);
+            if (!extraction) return;
+            lastExtraction = extraction;
+
+            if ((extraction.safety && extraction.safety.level === 'crisis') || looksLikeCrisis(text)) {
+                showCrisisSupport();
+            }
+
+            if (extraction.offlineFallback) {
+                showToast("Couldn't reach the helper, so nothing was filled in. You can add details yourself.");
+                return;
+            }
+
+            // A fresh reading replaces earlier suggestions (never values the user set).
+            clearAiSuggestions();
+            extractedText = text;
+            extractionStale = false;
+            document.getElementById('staleNotice').hidden = true;
+            document.getElementById('spokenReplyCard').classList.remove('is-stale');
+            document.getElementById('dialectTermsContainer').classList.remove('is-stale');
+            clearSaveMessages();
+
+            const filled = [];
+            const fill = (id, value) => {
+                const slider = document.getElementById(id);
+                if (typeof value !== 'number' || slider.dataset.source === 'user') return;
+                setSliderValue(slider, value, 'ai');
+                filled.push(id);
+            };
+            fill('sleepSlider', extraction.sleepHours);
+            fill('stressSlider', extraction.stress);
+            fill('fatigueSlider', extraction.fatigue);
+            fill('hoursSlider', extraction.studyHours !== null && extraction.studyHours !== undefined ? extraction.studyHours : extraction.workHours);
+            if (filled.length) document.getElementById('detailsSection').open = true;
+
+            // Tags
+            if (Array.isArray(extraction.tags)) {
+                extraction.tags.forEach(t => {
+                    const tag = t.startsWith('#') ? t : '#' + t;
+                    if (!currentTags.includes(tag) && currentTags.length < 20) {
+                        currentTags.push(tag);
+                        aiTags.add(tag);
+                    }
+                });
+                renderTags();
+            }
+
+            // Dialect terms
+            if (Array.isArray(extraction.dialectTerms) && extraction.dialectTerms.length > 0) {
+                const container = document.getElementById('dialectTermsContainer');
+                container.replaceChildren();
+                container.style.display = 'flex';
+                extraction.dialectTerms.forEach(d => {
+                    const span = document.createElement('span');
+                    span.className = 'dialect-pill';
+                    span.textContent = `Dialect: "${d.heard}" → ${d.meaning}`;
+                    container.appendChild(span);
+                });
+            }
+
+            // Spoken reply
+            if (extraction.spokenReply) {
+                const replyCard = document.getElementById('spokenReplyCard');
+                const replyText = document.getElementById('spokenReplyText');
+                replyCard.style.display = 'block';
+                replyText.textContent = extraction.spokenReply;
+            }
+
+            showToast(filled.length ? 'Suggested some details from your words. Check them before saving.' : 'Nothing new to suggest.');
+        }
+
+        // ---- Suggestions that no longer match the entry ----
+        function clearAiSuggestions() {
+            DETAIL_SLIDERS.forEach(id => {
+                const slider = document.getElementById(id);
+                if (slider.dataset.source === 'ai') {
+                    slider.dataset.touched = 'false';
+                    delete slider.dataset.source;
+                    document.getElementById(slider.dataset.badge).textContent = 'Not added';
+                    slider.closest('.slider-group').classList.remove('is-stale');
+                }
+            });
+            currentTags = currentTags.filter(t => !aiTags.has(t));
+            aiTags = new Set();
+            renderTags();
+            updateDetailsHint();
+        }
+
+        function markExtractionStale() {
+            extractionStale = true;
+            DETAIL_SLIDERS.forEach(id => {
+                const slider = document.getElementById(id);
+                if (slider.dataset.source === 'ai') renderSliderBadge(slider);
+            });
+            renderTags();
+            document.getElementById('spokenReplyCard').classList.add('is-stale');
+            document.getElementById('dialectTermsContainer').classList.add('is-stale');
+            document.getElementById('staleNotice').hidden = false;
+        }
+
+        // "Keep them": the user has reviewed the suggestions and accepts them as their own.
+        function keepSuggestions() {
+            DETAIL_SLIDERS.forEach(id => {
+                const slider = document.getElementById(id);
+                if (slider.dataset.source === 'ai') { slider.dataset.source = 'user'; renderSliderBadge(slider); }
+            });
+            aiTags = new Set();
+            extractionStale = false;
+            extractedText = document.getElementById('editor').value.trim();
+            renderTags();
+            document.getElementById('staleNotice').hidden = true;
+            document.getElementById('spokenReplyCard').style.display = 'none';
+            document.getElementById('dialectTermsContainer').style.display = 'none';
+            clearSaveMessages();
+        }
+
+        function removeSuggestions() {
+            clearAiSuggestions();
+            extractionStale = false;
+            extractedText = null;
+            lastExtraction = null;
+            document.getElementById('staleNotice').hidden = true;
+            document.getElementById('spokenReplyCard').style.display = 'none';
+            document.getElementById('dialectTermsContainer').style.display = 'none';
+            clearSaveMessages();
+        }
+
+        // ---- Save Entry (the only place a diary record is created) ----
+        function showSaveError(message) {
+            const el = document.getElementById('saveError');
+            el.textContent = message;
+            el.hidden = false;
+        }
+
+        function clearSaveMessages() {
+            const err = document.getElementById('saveError');
+            err.textContent = '';
+            err.hidden = true;
+            document.getElementById('saveStatus').textContent = '';
+        }
+
+        function localDateString(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        async function saveCurrentEntry() {
+            if (isSaving) return;   // one click, one record
+
+            const editor = document.getElementById('editor');
+            const text = editor.value.trim();
+            // A repeat click straight after saving: keep the confirmation, save nothing.
+            if (!text && justSaved) return;
+            clearSaveMessages();
+            if (!text) {
+                showSaveError('Write a few words before saving. Your mood and details will stay as they are.');
+                editor.focus();
+                return;
+            }
+
+            // Suggestions made from an earlier version of the text must be reviewed first.
+            // Crisis support is still shown straight away if the words call for it.
+            if (extractionStale) {
+                if (looksLikeCrisis(text)) showCrisisSupport();
+                showSaveError('Your entry changed after the suggestions were made. Choose "Suggest again", "Keep them" or "Remove them", then save.');
+                document.getElementById('staleNotice').querySelector('button').focus();
+                return;
+            }
+
+            // Crisis entries are saved like any other entry, and support is shown first,
+            // so it stays visible whether or not the save succeeds.
+            const crisis = looksLikeCrisis(text) || Boolean(lastExtraction && lastExtraction.safety && lastExtraction.safety.level === 'crisis');
+            if (crisis) showCrisisSupport();
+
+            const title = document.getElementById('entryTitle').value.trim() || 'Daily check-in';
+            const mode = getStoredUserMode();
+            const entryData = {
+                date: localDateString(new Date()),   // the user's own calendar day, not UTC
+                title,
+                mood: currentSelectedMood,            // '' when skipped
+                text,                                  // exactly what the user wrote
+                tags: [...currentTags],
+                ...collectDetails(mode),
+                mode,
+                summary: text.slice(0, 150),
+                safety: crisis
+                    ? { level: 'crisis', reason: 'crisis language in entry' }
+                    : (lastExtraction && lastExtraction.safety ? lastExtraction.safety : { level: 'none', reason: null })
+            };
+
+            const saveBtn = document.getElementById('saveEntryBtn');
+            isSaving = true;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            document.getElementById('saveStatus').textContent = 'Saving your entry...';
+            try {
+                const saved = await createDiaryEntry(entryData);
+                let message = getEntrySessionToken() && getEntrySessionToken() !== 'expired' ? 'Saved to your account.' : 'Saved on this device.';
+                if (saved && saved.savedLocally) {
+                    message = `Saved on this device only. We couldn't reach your account: ${saved.accountError}`;
+                }
+                if (crisis) message += ' The support details at the top of the page are there whenever you need them.';
+                document.getElementById('saveStatus').textContent = message;
+                justSaved = true;
+                resetDraftAfterSave();
+                renderWeekBar();
+            } catch (e) {
+                document.getElementById('saveStatus').textContent = '';
+                showSaveError(`Not saved: ${e.message}. Your writing is still here, so you can try again.`);
+            } finally {
+                isSaving = false;
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save entry';
+            }
+        }
+
+        // After a successful save the draft is cleared, so pressing Save again can't duplicate it.
+        function resetDraftAfterSave() {
+            document.getElementById('entryTitle').value = '';
+            document.getElementById('editor').value = '';
+            currentTags = [];
+            renderTags();
+            clearDetails();
+            lastExtraction = null;
+            extractedText = null;
+            extractionStale = false;
+            aiTags = new Set();
+            document.getElementById('staleNotice').hidden = true;
+            document.getElementById('dialectTermsContainer').style.display = 'none';
+            document.getElementById('spokenReplyCard').style.display = 'none';
+            updateWordCount();
+            document.getElementById('newCheckinBtn').hidden = false;
+        }
+
+        function startNewCheckin() {
+            document.querySelectorAll('.mood-pill.selected').forEach(btn => selectMood(btn));
+            currentSelectedMood = '';
+            delete document.body.dataset.flowMood;
+            flow.viaRespond = false;
+            flow.suggestionKind = '';
+            justSaved = false;
+            clearSaveMessages();
+            document.getElementById('newCheckinBtn').hidden = true;
+            showStep(1);
+        }
+
+        // ---- Week as a Bar of Music ----
+        async function renderWeekBar() {
+            const list = document.getElementById('weekBeats');
+            if (!list) return;
+            const all = await loadDiaryEntries();
+            const entries = personalEntries(all);   // sample entries are examples, not the user's week
+            const note = document.getElementById('weekBarNote');
+            if (note) note.textContent = all.length > entries.length ? 'Only your own entries are shown. Sample entries are left out.' : '';
+            const now = new Date();
+            const monday = new Date(now);
+            monday.setHours(0, 0, 0, 0);
+            monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            list.replaceChildren();
+
+            const frequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
+
+            days.forEach((dayName, idx) => {
+                const dayDate = new Date(monday);
+                dayDate.setDate(monday.getDate() + idx);
+                const dateStr = dayDate.toISOString().split('T')[0];
+
+                const matching = entries.find(e => String(e.date).startsWith(dateStr));
+
+                const li = document.createElement('li');
+                li.className = 'week-beat';
+                if (dayDate.toDateString() === now.toDateString()) li.classList.add('today');
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'beat-name';
+                nameSpan.textContent = dayName;
+
+                const noteBtn = document.createElement('button');
+                noteBtn.className = 'beat-note';
+                noteBtn.type = 'button';
+                noteBtn.setAttribute('aria-label', `${dayName}: ${matching ? (matching.mood || 'entry, no mood chosen') : 'No entry'}`);
+
+                if (matching) {
+                    li.classList.add('has-entry');
+                    const mKey = moodKey(matching.mood);
+                    if (mKey) li.dataset.mood = mKey;
+                    const head = document.createElement('span');
+                    head.className = 'note-head';
+                    head.setAttribute('aria-hidden', 'true');
+                    noteBtn.appendChild(head);
+                }
+
+                noteBtn.onclick = () => {
+                    if (window.SmartDiaryMusicSynth) {
+                        const freq = frequencies[idx];
+                        window.SmartDiaryMusicSynth.playTone(freq, 0.4, 'sine', matching && matching.stress > 6 ? 0.3 : 0);
+                    }
+                    if (matching) showToast(`${dayName}: ${matching.title}${matching.mood ? ` (${matching.mood})` : ''}`);
+                };
+
+                li.appendChild(nameSpan);
+                li.appendChild(noteBtn);
+                list.appendChild(li);
+            });
+        }
+
+        // ---- Read Aloud with SpeechSynthesis ----
+        function readEntryAloud() {
+            const title = document.getElementById('entryTitle').value;
+            const text = document.getElementById('editor').value;
+            const content = (title ? title + '. ' : '') + text;
+
+            if (!content.trim()) {
+                showToast('Nothing to read aloud.');
+                return;
+            }
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(content);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+                showToast('Reading entry aloud...');
+            } else {
+                showToast('Text-to-speech not supported.');
+            }
+        }
+
+        // ---- Prompt Drawer ----
+        function toggleDrawer() {
+            document.getElementById('smartDrawer').classList.toggle('open');
+        }
+
+        async function refreshDailyPrompt() {
+            const mode = getStoredUserMode();
+            const entries = personalEntries(await loadDiaryEntries());   // never build prompts from samples
+            const prompt = await getDailyPromptAI(mode, {}, entries.slice(0, 3));
+            document.getElementById('dailyPrompt').textContent = prompt;
+        }
+
+        // "Start with this" shows the drawer prompt as a suggestion beside the editor
+        // (it is not written into the entry), then opens the diary step.
+        function usePrompt() {
+            flow.drawerText = document.getElementById('dailyPrompt').textContent;
+            flow.suggestionKind = 'drawer';
+            toggleDrawer();
+            showStep(3);
+        }
+
+        function updateWordCount() {
+            const text = document.getElementById('editor').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            document.getElementById('word-count').textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+        }
+
+        document.getElementById('editor').addEventListener('input', () => {
+            updateWordCount();
+            justSaved = false;
+            const text = document.getElementById('editor').value.trim();
+            if (extractedText !== null && !extractionStale && text !== extractedText) markExtractionStale();
+        });
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleDarkMode() {
+            const isDark = cadenceToggleTheme() === 'dark';
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        function setFont(fontType) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+            localStorage.setItem('selected-font', fontType);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function applySavedPreferences() {
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+
+            const mode = getStoredUserMode();
+            applyModeToUI(mode);
+
+            // Update auth link
+            const token = getEntrySessionToken();
+            if (token && token !== 'expired') {
+                document.querySelector('#navAccountLink .nav-label').textContent = 'My account';
+                document.getElementById('navSignUpLink').style.display = 'none';
+            }
+        }
+
+        document.getElementById('today-date').textContent =
+            new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+        // Initialize Today view: always start at step 1 (check in)
+        applySavedPreferences();
+        if (window.history && history.replaceState) history.replaceState({ step: 1 }, '', location.pathname + location.search);
+        showStep(1, { push: false, focus: false });
+        if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) setVoiceUnavailable('not supported in this browser');
+        renderWeekBar();
+        refreshDailyPrompt();
+    </script>
+</body>
+</html>

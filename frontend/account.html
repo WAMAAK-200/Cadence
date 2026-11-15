@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <script src="theme.js"></script>
+    <title>Account - Cadence</title>
+    <link rel="stylesheet" href="user_style.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <aside class="sidebar" aria-label="Primary Navigation">
+        <div>
+            <a class="brand" href="welcome.html" aria-label="Cadence, about the app"><svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true" focusable="false"><rect x="3" y="11" width="4" height="12" rx="2" fill="var(--calm)"/><rect x="11" y="4" width="4" height="19" rx="2" fill="var(--happy)"/><rect x="19" y="14" width="4" height="9" rx="2" fill="var(--stressed)"/></svg><span>Cadence</span></a>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="user_interface.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pen"></use></svg><span class="nav-label">Today</span></a></li>
+                    <li><a href="entries.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg><span class="nav-label">All Entries</span></a></li>
+                    <li><a href="calendar.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-calendar"></use></svg><span class="nav-label">Calendar</span></a></li>
+                    <li><a href="insights.html"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-wave"></use></svg><span class="nav-label">Insights</span></a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <button class="sidebar-btn" id="a11yToggleBtn" aria-expanded="false" aria-controls="a11yPanel" onclick="toggleA11yPanel()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sliders"></use></svg><span class="nav-label">Display &amp; accessibility</span></button>
+            <button class="sidebar-btn" onclick="toggleDarkMode()"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-moon"></use></svg><span class="nav-label">Light / dark</span></button>
+            <a href="account.html" class="account-link session-link active" aria-current="page"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user"></use></svg><span class="nav-label">Account</span></a>
+            <a href="sign_up.html" class="account-link signup-link"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-user-plus"></use></svg><span class="nav-label">Sign up</span></a>
+        </div>
+    </aside>
+
+    <div class="a11y-panel" id="a11yPanel" role="dialog" aria-label="Display and accessibility options">
+        <h3>
+            <span>Display &amp; accessibility</span>
+            <button class="close-drawer" aria-label="Close settings menu" onclick="toggleA11yPanel()">&times;</button>
+        </h3>
+
+        <span class="panel-section-label">Writing Font</span>
+        <div class="font-switcher-row" role="group" aria-label="Select writing font">
+            <button type="button" class="font-btn" id="fontSans" aria-pressed="true" onclick="setFont('default')">Sans</button>
+            <button type="button" class="font-btn" id="fontSerif" aria-pressed="false" style="font-family: 'Lora', serif;" onclick="setFont('serif')">Serif</button>
+            <button type="button" class="font-btn" id="fontMono" aria-pressed="false" style="font-family: 'Courier Prime', monospace;" onclick="setFont('mono')">Mono</button>
+        </div>
+
+        <span class="panel-section-label">Accessibility</span>
+        <button class="a11y-option" id="btnLargeText" aria-pressed="false" onclick="toggleA11yFeature('a11y-large-text', this, 'Larger text')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-text-size"></use></svg><span class="nav-label">Larger text</span></button>
+        <button class="a11y-option" id="btnHighContrast" aria-pressed="false" onclick="toggleA11yFeature('a11y-high-contrast', this, 'High contrast')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-contrast"></use></svg><span class="nav-label">High contrast</span></button>
+        <button class="a11y-option" id="btnReadableSpacing" aria-pressed="false" onclick="toggleA11yFeature('a11y-readable-spacing', this, 'Wide spacing')"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-spacing"></use></svg><span class="nav-label">Wider letter spacing</span></button>
+    </div>
+
+    <main class="main-content" id="main-content">
+        <div class="top-actions">
+            <h1 class="date-heading">Your Account</h1>
+        </div>
+        <p id="account-status" aria-live="polite"></p>
+        <div id="account-actions" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px;" hidden>
+            <a href="change_password.html" class="save-btn" style="text-decoration: none;">Change Password</a>
+            <button type="button" id="logout-button" class="save-btn">Log Out</button>
+        </div>
+        <p id="login-required" hidden>Please <a href="login.html">log in</a> to manage your account.</p>
+    </main>
+
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+    <script src="icons.js"></script>
+    <script src="account_nav.js"></script>
+    <script>
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 250);
+            }, 2500);
+        }
+
+        const sessionKey = 'smartdiary_session_token';
+        const expiredSessionKey = 'smartdiary_session_expired';
+        const logoutButton = document.getElementById('logout-button');
+        const accountActions = document.getElementById('account-actions');
+        const accountStatus = document.getElementById('account-status');
+        const loginRequired = document.getElementById('login-required');
+        function showAccountSession() {
+            const expired = sessionStorage.getItem(expiredSessionKey) === 'true';
+            const signedIn = Boolean(sessionStorage.getItem(sessionKey)) && !expired;
+            accountActions.hidden = !signedIn;
+            loginRequired.hidden = signedIn;
+            accountStatus.hidden = !signedIn && !expired;
+            if (signedIn) accountStatus.textContent = 'You are signed in. Your entries are stored with your account.';
+            if (expired) accountStatus.textContent = 'Your session expired. Please log in again.';
+        }
+        showAccountSession();
+
+        logoutButton.addEventListener('click', async () => {
+            const token = sessionStorage.getItem(sessionKey);
+            let serverLogoutSucceeded = true;
+            try {
+                await fetch('http://127.0.0.1:8000/logout', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (error) {
+                serverLogoutSucceeded = false;
+            } finally {
+                sessionStorage.removeItem(sessionKey);
+                sessionStorage.removeItem(expiredSessionKey);
+                showAccountSession();
+                window.updateAccountNavigation();
+                window.location.href = 'login.html';
+            }
+        });
+
+        function setFont(fontType, silent = false) {
+            document.body.classList.remove('font-serif', 'font-mono');
+            document.querySelectorAll('.font-btn').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+
+            if (fontType === 'serif') {
+                document.body.classList.add('font-serif');
+                document.getElementById('fontSerif').setAttribute('aria-pressed', 'true');
+            } else if (fontType === 'mono') {
+                document.body.classList.add('font-mono');
+                document.getElementById('fontMono').setAttribute('aria-pressed', 'true');
+            } else {
+                document.getElementById('fontSans').setAttribute('aria-pressed', 'true');
+            }
+
+            localStorage.setItem('selected-font', fontType);
+            if (!silent) {
+                const labels = { default: 'Modern Sans', serif: 'Editorial Serif', mono: 'Typewriter Mono' };
+                showToast(`Font switched to ${labels[fontType]}`);
+            }
+        }
+
+        function applySavedPreferences() {
+            const savedFont = localStorage.getItem('selected-font') || 'default';
+            setFont(savedFont, true);
+
+            ['a11y-large-text', 'a11y-high-contrast', 'a11y-readable-spacing'].forEach(cls => {
+                if (localStorage.getItem(cls) === 'true') {
+                    document.body.classList.add(cls);
+                    const btnMap = { 'a11y-large-text': 'btnLargeText', 'a11y-high-contrast': 'btnHighContrast', 'a11y-readable-spacing': 'btnReadableSpacing' };
+                    const btn = document.getElementById(btnMap[cls]);
+                    if (btn) btn.setAttribute('aria-pressed', 'true');
+                }
+            });
+        }
+        applySavedPreferences();
+
+        function toggleDarkMode() {
+            const isDark = cadenceToggleTheme() === 'dark';
+            showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+        }
+
+        function toggleA11yPanel() {
+            const panel = document.getElementById('a11yPanel');
+            const btn = document.getElementById('a11yToggleBtn');
+            const isOpen = panel.classList.toggle('open');
+            btn.setAttribute('aria-expanded', isOpen);
+        }
+
+        function toggleA11yFeature(className, btn, label) {
+            const isEnabled = document.body.classList.toggle(className);
+            btn.setAttribute('aria-pressed', isEnabled);
+            localStorage.setItem(className, isEnabled);
+            showToast(`${label} ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+    </script>
+</body>
+</html>
