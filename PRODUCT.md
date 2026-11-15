@@ -6,11 +6,11 @@ product
 
 ## Users
 
-Students. especially those at North East universities (Durham, Newcastle, Northumbria, Sunderland, Teesside) and institutions at lower levels, plus some employed or unemployed users in the same region. They check in once a day, usually on a phone, often tired, sometimes stressed about exams. A check-in takes seconds: a short voice note or a few typed lines. Once a week they come back to hear their week as a short piece of music and read what their own data shows.
+Students, especially those at North East universities (Durham, Newcastle, Northumbria, Sunderland, Teesside) and institutions at lower levels, plus some employed or unemployed users in the same region. They check in once a day, usually on a phone, often tired, sometimes stressed about exams. A check-in takes seconds: a short voice note or a few typed lines. Once a week they come back to hear their week as a short piece of music and read what their own data shows.
 
 ## Product Purpose
 
-Cadence (working name Smart Diary) turns a term of quick diary check-ins into structured wellbeing data (mood, sleep, stress, study), explains real patterns in plain English, gives exam-aware advice, and composes each week into a piece of music. It is wellbeing support, not therapy. Success: a student keeps checking in through exam season because it is quick, feels like theirs, and the weekly composition is something they want to hear.
+Cadence turns a term of quick diary check-ins into structured wellbeing data (mood, sleep, stress, study), explains real patterns in plain English, gives exam-aware advice, and composes each week into a piece of music. It is wellbeing support, not therapy. Success: a student keeps checking in through exam season because it is quick, feels like theirs, and the weekly composition is something they want to hear.
 
 ## Brand Personality
 

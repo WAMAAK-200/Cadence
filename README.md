@@ -66,8 +66,3 @@
    http://127.0.0.1:8000
    ```
 
-4. Run integration & unit tests:
-   ```bash
-   python3 -m unittest test_full_integration.py
-   python3 -m unittest discover ai_backend
-   ```
