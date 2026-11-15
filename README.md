@@ -53,16 +53,20 @@
 
 ## Quick Start
 
-1. Start the unified server:
+1. Install the Python dependencies:
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+2. Start the unified server:
    ```bash
    python3 security.py
    ```
-2. Open your browser and navigate to:
+3. Open your browser and navigate to:
    ```
    http://127.0.0.1:8000
    ```
 
-3. Run integration & unit tests:
+4. Run integration & unit tests:
    ```bash
    python3 -m unittest test_full_integration.py
    python3 -m unittest discover ai_backend

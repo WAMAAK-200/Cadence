@@ -83,6 +83,11 @@ button, input, textarea {
     color: inherit;
 }
 
+/* Keep the `hidden` attribute working even when a component sets display. */
+[hidden] {
+    display: none !important;
+}
+
 /* Font Switcher Themes (writing font only applies to the writing surfaces) */
 body.font-serif .borderless-editor,
 body.font-serif .entry-title-input,
@@ -385,34 +390,75 @@ body.font-mono .edit-textarea {
 .week-beats {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     max-width: 420px;
     position: relative;
-    background: linear-gradient(var(--line), var(--line)) 0 13px / 100% 1px no-repeat;  /* the stave line */
+    /* The stave line runs through the note heads. */
+    background: linear-gradient(var(--line), var(--line)) 0 31px / 100% 1px no-repeat;
 }
 
-.beat {
+.week-beat {
     display: grid;
     justify-items: center;
-    gap: 6px;
+    gap: 4px;
     font-size: var(--text-xs);
     color: var(--ink-3);
 }
-.beat.is-today {
-    color: var(--ink);
-    font-weight: 700;
+
+.beat-name {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--ink-3);
 }
 
-.note-head {
-    width: 16px;
-    height: 11px;
-    margin-top: 8px;
+.week-beat.today .beat-name {
+    color: var(--ink);
+    font-weight: 750;
+}
+
+.beat-note {
+    width: 24px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+}
+
+.beat-note:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+}
+
+/* A rest is a hollow note head; a check-in fills it with the mood colour. */
+.beat-note::before {
+    content: "";
+    width: 14px;
+    height: 10px;
     border-radius: 50%;
     transform: rotate(-20deg);
     border: 1.5px solid var(--ink-3);
     background: var(--paper);
 }
-.beat[data-mood] .note-head {
+
+.week-beat.has-entry .beat-note::before {
+    display: none;
+}
+
+.note-head {
+    width: 14px;
+    height: 10px;
+    border-radius: 50%;
+    transform: rotate(-20deg);
+    border: 1.5px solid var(--ink-3);
+    background: var(--paper);
+}
+
+.week-beat[data-mood] .note-head {
     border-color: var(--mood);
     background: var(--mood);
 }
@@ -731,35 +777,70 @@ body.font-mono .edit-textarea {
     margin-bottom: 20px;
 }
 
-.calendar-weekdays,
-.calendar-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    text-align: center;
+.calendar-nav-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--ink);
+    transition: border-color 0.15s var(--ease);
 }
 
-.calendar-weekdays div {
+.calendar-nav-btn:hover {
+    border-color: var(--ink);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.weekday-header {
+    text-align: center;
     font-size: var(--text-xs);
     font-weight: 650;
     color: var(--ink-3);
-    padding-bottom: 6px;
+    padding: 8px 0;
+    text-transform: uppercase;
 }
 
 .day {
-    padding: 16px 0;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
     border: 1px solid var(--line);
     border-radius: var(--r-sm);
     background: var(--surface);
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.9375rem;
+    font-size: var(--text-sm);
+    line-height: 1;
     transition: border-color 0.15s var(--ease);
 }
 .day:hover {
     border-color: var(--ink);
 }
-.today {
+.day.selected {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+.day.has-entry {
+    border-color: var(--mood);
+}
+.day .note {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mood);
+}
+.day.today {
     background-color: var(--ink);
     color: var(--on-ink);
     border-color: var(--ink);
@@ -1061,7 +1142,7 @@ body.a11y-high-contrast .toast {
 }
 body.a11y-high-contrast .nav-menu a.active,
 body.a11y-high-contrast .mood-pill.selected,
-body.a11y-high-contrast .today,
+body.a11y-high-contrast .day.today,
 body.a11y-high-contrast .save-btn,
 body.a11y-high-contrast .font-btn[aria-pressed="true"],
 body.a11y-high-contrast .a11y-option[aria-pressed="true"] {

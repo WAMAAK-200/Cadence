@@ -10,6 +10,11 @@ const ENTRY_EXPIRED_KEY = 'smartdiary_session_expired';
 const ENTRY_LOCAL_KEY = 'diary_entries';
 const ENTRY_USER_PROFILE_KEY = 'smartdiary_user_profile';
 const EXAM_LOCAL_KEY = 'smartdiary_exams';
+// Guest entries are encrypted with a non-extractable Web Crypto key stored in
+// IndexedDB for this origin (see ENCRYPTION.md).
+const GUEST_CRYPTO_DB = 'smartdiary_guest_crypto';
+const GUEST_CRYPTO_KEY_ID = 'guest-entry-key';
+const GUEST_ENCRYPTED_PREFIX = 'sdenc:v1:';
 
 const SAMPLE_DIARY_ENTRIES = [
     {
@@ -186,33 +191,192 @@ function normalizeEntry(entry, index = 0) {
         summary: typeof entry.summary === 'string' ? entry.summary : '',
         dialectTerms: Array.isArray(entry.dialectTerms) ? entry.dialectTerms : [],
         safety: (entry.safety && typeof entry.safety === 'object') ? entry.safety : { level: 'none', reason: null },
-        spokenReply: typeof entry.spokenReply === 'string' ? entry.spokenReply : ''
+        spokenReply: typeof entry.spokenReply === 'string' ? entry.spokenReply : '',
+        isSample: entry.isSample === true
     };
 }
 
-// ---- Guest Storage ----
+// ---- Guest Storage (encrypted at rest) ----
 
-function getGuestEntries() {
-    const stored = localStorage.getItem(ENTRY_LOCAL_KEY);
-    if (stored === null) {
-        localStorage.setItem(ENTRY_LOCAL_KEY, JSON.stringify(SAMPLE_DIARY_ENTRIES));
-        return SAMPLE_DIARY_ENTRIES.map(e => ({ ...e, tags: [...e.tags] }));
+function openGuestCryptoDb() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(GUEST_CRYPTO_DB, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('keys');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function getGuestEncryptionKey() {
+    if (!window.crypto || !crypto.subtle || !window.indexedDB) {
+        throw new Error('This browser cannot securely encrypt guest entries.');
     }
+    const database = await openGuestCryptoDb();
     try {
-        const parsed = JSON.parse(stored);
-        const entries = Array.isArray(parsed)
-            ? parsed.map((e, idx) => normalizeEntry(e, idx)).filter(Boolean)
-            : [];
-        localStorage.setItem(ENTRY_LOCAL_KEY, JSON.stringify(entries));
-        return entries;
-    } catch (error) {
-        localStorage.setItem(ENTRY_LOCAL_KEY, '[]');
-        return [];
+        const existingKey = await new Promise((resolve, reject) => {
+            const request = database.transaction('keys', 'readonly').objectStore('keys').get(GUEST_CRYPTO_KEY_ID);
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+        if (existingKey) return existingKey;
+
+        const generatedKey = await crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+        );
+        return await new Promise((resolve, reject) => {
+            const transaction = database.transaction('keys', 'readwrite');
+            const store = transaction.objectStore('keys');
+            let selectedKey = generatedKey;
+            const request = store.get(GUEST_CRYPTO_KEY_ID);
+            request.onsuccess = () => {
+                if (request.result) selectedKey = request.result;
+                else store.put(generatedKey, GUEST_CRYPTO_KEY_ID);
+            };
+            transaction.oncomplete = () => resolve(selectedKey);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Could not store the encryption key.'));
+        });
+    } finally {
+        database.close();
     }
 }
 
-function saveGuestEntries(entries) {
-    localStorage.setItem(ENTRY_LOCAL_KEY, JSON.stringify(entries));
+function toBase64(bytes) {
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    }
+    return btoa(binary);
+}
+
+function fromBase64(value) {
+    return Uint8Array.from(atob(value), character => character.charCodeAt(0));
+}
+
+async function encryptGuestEntries(entries) {
+    const key = await getGuestEncryptionKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const cleartext = new TextEncoder().encode(JSON.stringify(entries));
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, cleartext);
+    return `${GUEST_ENCRYPTED_PREFIX}${toBase64(iv)}:${toBase64(new Uint8Array(ciphertext))}`;
+}
+
+async function decryptGuestEntries(stored) {
+    const parts = stored.slice(GUEST_ENCRYPTED_PREFIX.length).split(':');
+    if (parts.length !== 2) throw new Error('Encrypted guest entries are malformed.');
+    const key = await getGuestEncryptionKey();
+    const cleartext = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: fromBase64(parts[0]) }, key, fromBase64(parts[1])
+    );
+    return JSON.parse(new TextDecoder().decode(cleartext));
+}
+
+async function getGuestEntries() {
+    const stored = localStorage.getItem(ENTRY_LOCAL_KEY);
+    if (stored === null) {
+        const samples = SAMPLE_DIARY_ENTRIES.map(e => ({ ...e, tags: [...e.tags], isSample: true }));
+        await saveGuestEntries(samples);
+        return samples;
+    }
+    try {
+        const parsed = stored.startsWith(GUEST_ENCRYPTED_PREFIX)
+            ? await decryptGuestEntries(stored)
+            : JSON.parse(stored);
+        const entries = Array.isArray(parsed)
+            ? parsed.map((entry, index) => normalizeEntry(entry, index)).filter(Boolean)
+            : [];
+        // Upgrade legacy plaintext guest entries to the encrypted format.
+        if (!stored.startsWith(GUEST_ENCRYPTED_PREFIX)) await saveGuestEntries(entries);
+        return entries;
+    } catch (error) {
+        // Never overwrite data that could not be read: the key may return later.
+        throw new Error('Guest entries could not be decrypted or read. The browser data has been kept.');
+    }
+}
+
+async function saveGuestEntries(entries) {
+    localStorage.setItem(ENTRY_LOCAL_KEY, await encryptGuestEntries(entries));
+}
+
+async function readGuestEntriesForMigration() {
+    try {
+        // Seeded demo entries are not the user's data, so never import them.
+        return (await getGuestEntries()).filter(entry => entry.isSample !== true);
+    } catch (error) {
+        throw new Error(`${error.message} Login was stopped and the browser data was kept.`);
+    }
+}
+
+async function importGuestEntriesToAccount(token, entries) {
+    if (!Array.isArray(entries)) {
+        throw new Error('Guest entries could not be read as a list. They remain in the browser.');
+    }
+    if (entries.length === 0) return { imported: 0 };
+
+    const maxBatchBytes = 4 * 1024 * 1024;
+    const encoder = new TextEncoder();
+    const batches = [];
+    let batch = [];
+    let batchBytes = 64;
+
+    for (const entry of entries) {
+        const cleanEntry = {
+            id: entry.id,
+            date: entry.date,
+            title: entry.title,
+            mood: entry.mood,
+            text: entry.text,
+            tags: entry.tags,
+            sleepHours: entry.sleepHours,
+            sleepQuality: entry.sleepQuality,
+            stress: entry.stress,
+            fatigue: entry.fatigue,
+            studyHours: entry.studyHours,
+            workHours: entry.workHours,
+            summary: entry.summary,
+            dialectTerms: entry.dialectTerms,
+            safety: entry.safety,
+            spokenReply: entry.spokenReply,
+            mode: entry.mode
+        };
+        const entryBytes = encoder.encode(JSON.stringify(cleanEntry)).byteLength + 1;
+        if (entryBytes + 64 > maxBatchBytes) {
+            throw new Error('A guest entry is too large to import. It remains in the browser.');
+        }
+        if (batch.length && batchBytes + entryBytes > maxBatchBytes) {
+            batches.push(batch);
+            batch = [];
+            batchBytes = 64;
+        }
+        batch.push(cleanEntry);
+        batchBytes += entryBytes;
+    }
+    if (batch.length) batches.push(batch);
+
+    let imported = 0;
+    let offset = 0;
+    for (const entriesBatch of batches) {
+        let response;
+        try {
+            response = await fetch(`${ENTRY_API_BASE}/entries/import`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ entries: entriesBatch, offset })
+            });
+        } catch (error) {
+            throw new Error('Could not reach the diary server; guest entries were kept in the browser.');
+        }
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(`${result.message || 'Guest entry import failed.'} Guest entries remain in the browser.`);
+        }
+        imported += result.imported || 0;
+        offset += entriesBatch.length;
+    }
+    return { imported };
 }
 
 // ---- API Request Wrapper ----
@@ -264,7 +428,7 @@ async function loadDiaryEntries() {
             console.warn('Falling back to guest entries due to API error:', e.message);
         }
     }
-    return getGuestEntries();
+    return await getGuestEntries();
 }
 
 async function createDiaryEntry(entry) {
@@ -281,9 +445,9 @@ async function createDiaryEntry(entry) {
             console.warn('Falling back to saving locally:', e.message);
         }
     }
-    const entries = getGuestEntries();
+    const entries = await getGuestEntries();
     entries.unshift(normalized);
-    saveGuestEntries(entries);
+    await saveGuestEntries(entries);
     return normalized;
 }
 
@@ -300,8 +464,8 @@ async function updateDiaryEntry(entryId, changes) {
             console.warn('API update failed, updating local:', e.message);
         }
     }
-    const entries = getGuestEntries().map(e => e.id === entryId ? normalizeEntry({ ...e, ...changes }) : e);
-    saveGuestEntries(entries);
+    const entries = (await getGuestEntries()).map(e => e.id === entryId ? normalizeEntry({ ...e, ...changes }) : e);
+    await saveGuestEntries(entries);
 }
 
 async function deleteDiaryEntry(entryId) {
@@ -316,8 +480,8 @@ async function deleteDiaryEntry(entryId) {
             console.warn('API delete failed, updating local:', e.message);
         }
     }
-    const entries = getGuestEntries().filter(e => e.id !== entryId);
-    saveGuestEntries(entries);
+    const entries = (await getGuestEntries()).filter(e => e.id !== entryId);
+    await saveGuestEntries(entries);
 }
 
 // ---- Exams & Revision Tracker CRUD ----
